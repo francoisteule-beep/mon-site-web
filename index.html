@@ -151,27 +151,21 @@
 
     /* ── PAGE PHOTO WHEEL ── */
     #page-photo { padding: 0 !important; overflow: hidden !important; }
-    #photo-bg {
-        position: absolute; inset: 0;
-        background-size: cover; background-position: center;
-        filter: blur(80px) brightness(0.12) saturate(0.5);
-        transform: scale(1.2);
-        transition: background-image 1.2s ease;
+
+    /* ── Carrousel plein écran ── */
+    #photo-carousel { position: absolute; inset: 0; z-index: 1; overflow: hidden; }
+    .carousel-slide {
+        position: absolute; top: 0; left: 0;
+        width: calc(100% / 3); height: 100%;
+        overflow: hidden;
     }
-    #photo-featured {
-        position: absolute; left: 50%; top: 50%;
-        transform: translate(-50%, -52%);
-        z-index: 5; pointer-events: none;
+    .carousel-slide img {
+        width: 100%; height: 100%;
+        object-fit: cover; display: block;
+        pointer-events: none; user-select: none; -webkit-user-drag: none;
     }
-    #photo-featured-img {
-        display: block;
-        height: clamp(280px, 62vh, 720px);
-        width: auto; max-width: 60vw;
-        object-fit: contain;
-        opacity: 0; transition: opacity 0.6s ease;
-        filter: drop-shadow(0 0 60px rgba(0,0,0,0.9));
-    }
-    #photo-featured-img.loaded { opacity: 1; }
+
+    /* ── Infos ── */
     #photo-info-panel {
         position: absolute; bottom: 52px; left: 50px;
         z-index: 20; pointer-events: none;
@@ -185,29 +179,25 @@
         position: absolute; top: 108px; right: 50px;
         font-size: .52rem; letter-spacing: 5px;
         color: rgba(255,255,255,0.22); z-index: 20; pointer-events: none;
-        transition: opacity 0.4s ease;
     }
-    #photo-wheel-area { position: absolute; inset: 0; z-index: 10; overflow: hidden; }
+
+    /* ── Roue de vignettes ── */
+    #photo-wheel-area { position: absolute; inset: 0; z-index: 10; overflow: hidden; pointer-events: none; }
     .wheel-thumb {
         position: absolute; left: 0; top: 0;
-        width: 78px; height: 104px;
-        transform-origin: center center;
+        width: 52px; height: 70px;
         overflow: hidden; cursor: pointer;
-        will-change: transform, opacity;
-        transition: outline 0.2s ease;
+        pointer-events: auto;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.55);
+        opacity: 0.6;
+        transition: opacity 0.2s ease, outline 0.2s ease;
     }
     .wheel-thumb img {
         position: absolute; inset: 0; width: 100%; height: 100%;
         object-fit: cover; display: block;
         pointer-events: none; user-select: none; -webkit-user-drag: none;
     }
-    .wheel-thumb.is-active { outline: 1px solid rgba(255,255,255,0.5); }
-    #photo-scroll-hint {
-        position: absolute; bottom: 26px; left: 50%;
-        transform: translateX(-50%);
-        font-size: .48rem; letter-spacing: 4px;
-        color: rgba(255,255,255,0.12); z-index: 20; pointer-events: none;
-    }
+    .wheel-thumb.is-active { outline: 1px solid rgba(255,255,255,0.75); opacity: 1; }
 
     /* ── PANNEAU PROJET ── */
     #project-panel { position:fixed; top:0; left:0; width:100%; height:100%; z-index:90; transform:translateY(100%); transition:transform .8s cubic-bezier(.86,0,.07,1); background:#111; overflow-y:auto; }
@@ -298,15 +288,13 @@
 </section>
 
 <section id="page-photo" class="page-section">
-    <div id="photo-bg"></div>
-    <div id="photo-featured"><img id="photo-featured-img" src="" alt=""></div>
+    <div id="photo-carousel"></div>
     <div id="photo-wheel-area"></div>
     <div id="photo-info-panel">
         <div id="photo-info-name"></div>
         <div id="photo-info-meta"></div>
     </div>
     <div id="photo-category-label"></div>
-    <div id="photo-scroll-hint">← DÉFILER →</div>
 </section>
 
 <section id="page-info" class="page-section">
@@ -426,127 +414,166 @@ var PHOTOS_CAPTURE = [
     { id:'capture-2', src:'./EXPORT INSTA/2.jpg' }
 ];
 
-/* ── PHOTO WHEEL ── */
-var ENABLE_PHOTO_BG = true; // false = désactive le fond animé flouté (gain de fluidité)
-
+/* ── PHOTO CAROUSEL + ROUE ── */
 (function(){
     var ALL_PHOTOS = [
         { id:'gucci-flora',  src:'https://assets.frantzimann.org/perfume/GUCCI/Gucci%20Flora%20Gorgeous%20Orchid.webp', cat:'IA — PARFUMS' },
         { id:'hermes-1',     src:'https://assets.frantzimann.org/perfume/HERMES/hermes-1.webp',                          cat:'IA — PARFUMS' },
-        { id:'issey-v1',     src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey1.webp',                          cat:'IA — PARFUMS' },
-        { id:'issey-v1',     src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey2.webp',                          cat:'IA — PARFUMS' },
-        { id:'mfk-1',        src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis.webp', cat:'IA — PARFUMS' },
-        { id:'mfk-2',        src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis1.webp', cat:'IA — PARFUMS' },
-        { id:'valentino-1',  src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino1.webp',              cat:'IA — PARFUMS' },
-        { id:'valentino-2',  src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino2.webp',              cat:'IA — PARFUMS' },
-        { id:'creed-1',      src:'https://assets.frantzimann.org/perfume/CREED/creed-1.webp',                           cat:'IA — PARFUMS' },
-        { id:'creed-2',      src:'https://assets.frantzimann.org/perfume/CREED/creed-2.webp',                           cat:'IA — PARFUMS' },
-
+        { id:'issey-v1',     src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey1.webp',                         cat:'IA — PARFUMS' },
+        { id:'issey-v2',     src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey2.webp',                         cat:'IA — PARFUMS' },
+        { id:'mfk-1',        src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis.webp',               cat:'IA — PARFUMS' },
+        { id:'mfk-2',        src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis1.webp',              cat:'IA — PARFUMS' },
+        { id:'valentino-1',  src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino1.webp',                      cat:'IA — PARFUMS' },
+        { id:'valentino-2',  src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino2.webp',                      cat:'IA — PARFUMS' },
+        { id:'creed-1',      src:'https://assets.frantzimann.org/perfume/CREED/creed-1.webp',                             cat:'IA — PARFUMS' },
+        { id:'creed-2',      src:'https://assets.frantzimann.org/perfume/CREED/creed-2.webp',                             cat:'IA — PARFUMS' },
     ];
 
-    var TOTAL   = ALL_PHOTOS.length; /* nombre total de photos */
-    var SLOTS   = 12;  /* référence fixe pour la géométrie — ne change jamais */
-    var VISIBLE = 9;   /* slots DOM rendus — fenêtre glissante */
-    var half    = Math.floor(VISIBLE / 2); /* 4 */
+    var TOTAL = ALL_PHOTOS.length;
 
-    var wheelEl = document.getElementById('photo-wheel-area');
-    var bgEl    = document.getElementById('photo-bg');
-    var featImg = document.getElementById('photo-featured-img');
-    var infName = document.getElementById('photo-info-name');
-    var infMeta = document.getElementById('photo-info-meta');
-    var catLbl  = document.getElementById('photo-category-label');
-    var thumbs  = [];
-    var wPos = 0, wTarget = 0, lastActive = -1, snapTimer;
+    var carouselEl = document.getElementById('photo-carousel');
+    var wheelEl    = document.getElementById('photo-wheel-area');
+    var infName    = document.getElementById('photo-info-name');
+    var infMeta    = document.getElementById('photo-info-meta');
+    var catLbl     = document.getElementById('photo-category-label');
 
-    /* Build VISIBLE slots fixes — les images changent dynamiquement */
-    for(var s = 0; s < VISIBLE; s++) {
+    /* ── Build carousel slides avec <img> + decode() forcé ── */
+    /* img.decode() garantit que l'image est décodée ET uploadée en GPU          */
+    /* avant le premier affichage : élimine le flash/saccade à la bascule.      */
+    var slides = [], _decodePromises = [];
+    ALL_PHOTOS.forEach(function(p) {
+        var slide = document.createElement('div');
+        slide.className = 'carousel-slide';
+        var img = document.createElement('img');
+        img.src = p.src; img.alt = ''; img.draggable = false;
+        slide.appendChild(img);
+        carouselEl.appendChild(slide);
+        slides.push(slide);
+        _decodePromises.push(img.decode ? img.decode().catch(function(){}) : Promise.resolve());
+    });
+
+    /* ── Build wheel thumbs (tous les TOTAL, images fixées) ── */
+    var thumbs = [];
+    for(var s = 0; s < TOTAL; s++) {
         var el = document.createElement('div');
         el.className = 'wheel-thumb';
         var img = document.createElement('img');
+        img.src = ALL_PHOTOS[s].src;
         img.alt = ''; img.draggable = false;
         el.appendChild(img);
-        el.addEventListener('click', (function(slot) {
+        el.addEventListener('click', (function(idx) {
             return function() {
-                var offset = slot - half;
-                wTarget = wPos - offset;
+                var diff = idx - wPos;
+                diff = diff - Math.round(diff / TOTAL) * TOTAL;
+                wTarget = wPos + diff;
                 clearTimeout(snapTimer);
-                snapTimer = setTimeout(function(){ wTarget = Math.round(wTarget); }, 350);
+                startPhotoWheelIfNeeded();
             };
         })(s));
         wheelEl.appendChild(el);
         thumbs.push(el);
     }
 
-    function setFeatured(idx) {
+    /* ── Attendre que toutes les images soient décodées ── */
+    var _preloaded = false, _onPreloaded = null;
+    Promise.all(_decodePromises).then(function() {
+        _preloaded = true;
+        if(_onPreloaded) _onPreloaded();
+    });
+
+    /* ── Cache viewport ── */
+    var _VW, _VH, _cx, _cy, _rx, _ry, _slideW, _slideOff;
+    function updateViewport() {
+        _VW = window.innerWidth; _VH = window.innerHeight;
+        _slideW   = _VW / 3;                    /* largeur d'une slide */
+        _slideOff = _VW / 2 - _slideW / 2;      /* décalage pour centrer la slide active */
+        _cx = _VW * 0.50; _cy = _VH * 0.50;
+        _rx = _VW * 0.41; _ry = _VH * 0.36;
+    }
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+
+    /* ── Cache style pour éviter les recalculs DOM inutiles ── */
+    var _lastTx      = new Array(TOTAL).fill('');
+    var _lastSlide   = new Array(TOTAL).fill('');
+    var _lastIsAct   = new Array(TOTAL).fill(false);
+
+    var wPos = 0, wTarget = 0, lastActive = -1, snapTimer;
+
+    function setInfo(idx) {
         if(idx === lastActive) return;
         lastActive = idx;
         var p = ALL_PHOTOS[idx];
         var m = PHOTO_META[p.id] || {};
-        featImg.classList.remove('loaded');
-        featImg.onload = function(){ featImg.classList.add('loaded'); };
-        featImg.src = p.src;
-        if(featImg.complete) featImg.classList.add('loaded');
-        if(ENABLE_PHOTO_BG) bgEl.style.backgroundImage = "url('" + p.src.replace(/'/g,"\\'") + "')";
         infName.textContent = m.name || '';
         infMeta.textContent = [m.date, m.tools].filter(Boolean).join('  ·  ');
         catLbl.textContent  = p.cat || '';
     }
 
     function render() {
-        var VW = window.innerWidth, VH = window.innerHeight;
-        var cx = VW * 0.50, cy = VH * 0.52;
-        var rx = VW * 0.42, ry = VH * 0.35;
-        var STEP = (Math.PI * 2) / SLOTS; /* géométrie toujours basée sur SLOTS=12 */
-        var HW = 39, HH = 52;
+        var HW = 26, HH = 35; /* demi-taille du thumb (52×70) */
+        var TAU = 2 * Math.PI;
 
-        var centerPhoto = ((-Math.round(wPos) % TOTAL) + TOTAL) % TOTAL;
-        setFeatured(centerPhoto);
+        /* Index de la slide centrée */
+        var centerIdx = (((Math.round(wPos) % TOTAL) + TOTAL) % TOTAL);
+        setInfo(centerIdx);
 
-        var frac = wPos - Math.round(wPos); /* partie fractionnaire [-0.5, 0.5] */
+        /* ── Carrousel : 3 slides visibles, centrée sur la slide active ── */
+        for(var i = 0; i < TOTAL; i++) {
+            var diff = i - wPos;
+            diff = diff - Math.round(diff / TOTAL) * TOTAL; /* wrap au plus court */
+            var sx = (_slideOff + diff * _slideW).toFixed(0) + 'px';
+            var stx = 'translateX(' + sx + ')';
+            if(stx !== _lastSlide[i]) { slides[i].style.transform = stx; _lastSlide[i] = stx; }
+        }
 
-        for(var s = 0; s < VISIBLE; s++) {
-            var slotOffset = s - half; /* -4 … 0 … +4 */
-            var rel = slotOffset + frac;
-
-            /* Photo à afficher dans ce slot */
-            var photoIdx = ((centerPhoto + slotOffset) % TOTAL + TOTAL) % TOTAL;
-            var slotImg = thumbs[s].querySelector('img');
-            if(slotImg.dataset.idx !== String(photoIdx)) {
-                slotImg.dataset.idx = String(photoIdx);
-                slotImg.src = ALL_PHOTOS[photoIdx].src;
-            }
-
-            var theta = Math.PI/2 + rel * STEP;
-            var x = cx + rx * Math.cos(theta);
-            var y = cy + ry * Math.sin(theta);
-
-            var absRel = Math.abs(rel);
-            var t = Math.min(absRel / (SLOTS * 0.5), 1);
-            var opacity = Math.max(0, Math.min(1, 1 - (absRel - SLOTS*0.28) / (SLOTS*0.13)));
-
-            var el = thumbs[s];
-            el.style.transform = 'translate(' + (x - HW).toFixed(1) + 'px,' + (y - HH).toFixed(1) + 'px)';
-            el.style.opacity   = opacity;
-            el.style.zIndex    = Math.round((1 - t) * 20);
-            el.classList.toggle('is-active', slotOffset === 0);
+        /* ── Roue : tous les thumbs sur une ellipse, rotation liée à wPos ── */
+        var baseAngle = -(wPos / TOTAL) * TAU - Math.PI / 2;
+        for(var s = 0; s < TOTAL; s++) {
+            var angle = baseAngle + (s / TOTAL) * TAU;
+            var x = (_cx + _rx * Math.cos(angle) - HW).toFixed(1);
+            var y = (_cy + _ry * Math.sin(angle) - HH).toFixed(1);
+            var tx = 'translate(' + x + 'px,' + y + 'px)';
+            if(tx !== _lastTx[s]) { thumbs[s].style.transform = tx; _lastTx[s] = tx; }
+            var isAct = s === centerIdx;
+            if(isAct !== _lastIsAct[s]) { thumbs[s].classList.toggle('is-active', isAct); _lastIsAct[s] = isAct; }
         }
     }
 
-    var rafWheel = null;
-    function tickWheel(){ wPos += (wTarget - wPos) * 0.09; render(); rafWheel = requestAnimationFrame(tickWheel); }
-    window.startPhotoWheel = function(){ if(!rafWheel) tickWheel(); };
-    window.stopPhotoWheel  = function(){ if(rafWheel){ cancelAnimationFrame(rafWheel); rafWheel = null; } };
-    /* Ne démarre pas ici — switchPage le lance quand nécessaire */
+    /* ── Boucle RAF avec delta-time et arrêt auto ── */
+    var rafWheel = null, _lastTime = 0;
+    var LERP_SPEED = 5.5;
 
-    /* Scroll / trackpad */
+    function tickWheel(now) {
+        var dt = Math.min((now - _lastTime) / 1000, 0.05);
+        _lastTime = now;
+        var diff = wTarget - wPos;
+        if(Math.abs(diff) < 0.0005) {
+            wPos = wTarget; render(); rafWheel = null; return;
+        }
+        wPos += diff * (1 - Math.exp(-LERP_SPEED * dt));
+        render();
+        rafWheel = requestAnimationFrame(tickWheel);
+    }
+
+    function startPhotoWheelIfNeeded() {
+        if(!rafWheel) { _lastTime = performance.now(); rafWheel = requestAnimationFrame(tickWheel); }
+    }
+
+    window.startPhotoWheel = startPhotoWheelIfNeeded;
+    window.stopPhotoWheel  = function(){ if(rafWheel){ cancelAnimationFrame(rafWheel); rafWheel = null; } };
+
+    /* ── Événements de navigation ── */
     var photoPage = document.getElementById('page-photo');
+
     photoPage.addEventListener('wheel', function(e) {
         if(window.currentPage !== 'photo') return;
         e.preventDefault();
         var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
         wTarget -= d * 0.018;
         clearTimeout(snapTimer);
-        snapTimer = setTimeout(function(){ wTarget = Math.round(wTarget); }, 350);
+        snapTimer = setTimeout(function(){ wTarget = Math.round(wTarget); startPhotoWheelIfNeeded(); }, 350);
+        startPhotoWheelIfNeeded();
     }, { passive: false });
 
     var tx0 = 0;
@@ -554,12 +581,18 @@ var ENABLE_PHOTO_BG = true; // false = désactive le fond animé flouté (gain d
     photoPage.addEventListener('touchmove', function(e) {
         if(window.currentPage !== 'photo') return;
         var dx = e.touches[0].clientX - tx0;
-        wTarget += dx * 0.028; tx0 = e.touches[0].clientX;
+        wTarget -= dx * 0.028; tx0 = e.touches[0].clientX;
         clearTimeout(snapTimer);
-        snapTimer = setTimeout(function(){ wTarget = Math.round(wTarget); }, 350);
+        snapTimer = setTimeout(function(){ wTarget = Math.round(wTarget); startPhotoWheelIfNeeded(); }, 350);
+        startPhotoWheelIfNeeded();
     }, { passive: true });
 
-    window.initPhotoWheel = function(){ lastActive = -1; render(); window.startPhotoWheel(); };
+    window.initPhotoWheel = function(){
+        lastActive = -1;
+        _lastTx.fill(''); _lastSlide.fill(''); _lastIsAct.fill(false);
+        function go() { render(); startPhotoWheelIfNeeded(); }
+        if(_preloaded) { go(); } else { _onPreloaded = go; }
+    };
 })();
 
 /* ── NAVIGATION ── */
