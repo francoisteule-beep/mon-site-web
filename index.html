@@ -738,6 +738,7 @@ const carouselGroup=new THREE.Group(); scene.add(carouselGroup);
 
 let hasInteracted = false;
 let scrollTarget=0,scrollCurrent=0,isTouching=false,snapTimeout=null,isProjectOpen=false,currentActiveIndex=0;
+let timeMaterials=[], tvObjects=[]; /* cache — rempli après chargement GLTF */
 
 function handleUserInteraction() {
     if(!hasInteracted) {
@@ -837,17 +838,17 @@ if(ENABLE_RGB) {
 
 const camera=new THREE.PerspectiveCamera(50,window.innerWidth/window.innerHeight,0.1,100);
 camera.position.set(0,0.2,3); scene.add(camera);
-const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
-renderer.setSize(window.innerWidth,window.innerHeight); renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+const renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance'});
+renderer.setSize(window.innerWidth,window.innerHeight); renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
 renderer.toneMapping=THREE.ReinhardToneMapping; renderer.toneMappingExposure=1.5;
-renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled=false;
 
 const composer=new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene,camera));
-composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth,window.innerHeight),0.5,0.1,0.85));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth*0.5,window.innerHeight*0.5),0.5,0.1,0.85));
 
 scene.add(new THREE.AmbientLight(0xffffff,0.05));
-const cL=new THREE.PointLight(0xffaa55,3,15); cL.position.set(0,2,0); cL.castShadow=true; scene.add(cL);
+const cL=new THREE.PointLight(0xffaa55,3,15); cL.position.set(0,2,0); scene.add(cL);
 const fL=new THREE.DirectionalLight(0xaaccff,0.5); fL.position.set(0,2,8); scene.add(fL);
 
 const screenLights = [];
@@ -863,7 +864,6 @@ new GLTFLoader().load('https://assets.frantzimann.org/obj-3D/crt_tv.glb',(gltf)=
         
         tv.traverse((c)=>{ 
             if(!c.isMesh)return; 
-            c.castShadow=true; c.receiveShadow=true; 
             if(c.material) c.material.aoMapIntensity=1.5; 
             if((c.material&&c.material.name==='TVScreen')||c.name==='defaultMaterial_3'){ 
                 
@@ -897,14 +897,24 @@ new GLTFLoader().load('https://assets.frantzimann.org/obj-3D/crt_tv.glb',(gltf)=
             } 
         });
         
-        // Lumière écran — couleur dynamique selon la vidéo
-        if(ENABLE_SCREEN_LIGHT) {
-            const screenLight = new THREE.PointLight(0xffffff, 2.5, 4);
-            screenLight.position.set(0, 0.1, 0.6);
-            tv.add(screenLight);
-            screenLights.push(screenLight);
-        }
         carouselGroup.add(tv);
+    }
+    /* Cache : évite traverse() à chaque frame */
+    carouselGroup.children.forEach(tv => {
+        tvObjects.push(tv);
+        tv.traverse(c => {
+            if(c.isMesh && c.material && c.material.uniforms && c.material.uniforms.time)
+                timeMaterials.push(c.material);
+        });
+    });
+
+    /* Une seule lumière monde, positionnée devant la TV avant-scène (z≈1.5).   */
+    /* La TV avant est TOUJOURS à ce point — 8× moins de calculs shader.        */
+    if(ENABLE_SCREEN_LIGHT) {
+        const screenLight = new THREE.PointLight(0xffffff, 2.5, 2.8);
+        screenLight.position.set(0, 0.1, 1.5);
+        scene.add(screenLight);
+        screenLights.push(screenLight);
     }
     gltfLoaded=true; checkAllLoaded();
     
@@ -930,7 +940,7 @@ document.addEventListener('touchstart', () => { if(window.currentPage==='selects
 // Canvas pour sampler la couleur moyenne des vidéos
 const tvVideoSources = [videoCecec, video, videoninaadidas, videohermes, videoNoproj, videoNoproj, videoNoproj, videoNoproj];
 const sampleCvs = document.createElement('canvas');
-sampleCvs.width = 8; sampleCvs.height = 8;
+sampleCvs.width = 4; sampleCvs.height = 4;
 const sampleCtx2d = sampleCvs.getContext('2d', { willReadFrequently: true });
 
 // ── Boucle 3D contrôlée ──
@@ -941,30 +951,28 @@ function tick3d() {
     scrollCurrent+=(scrollTarget-scrollCurrent)*0.02; carouselGroup.rotation.y=-scrollCurrent;
     const ty=isProjectOpen?3:0; verticalOffset+=(ty-verticalOffset)*0.09; carouselGroup.position.y=verticalOffset;
 
-    carouselGroup.children.forEach((tv,i)=>{
-        if(!isProjectOpen) tv.position.y=Math.sin(time+i)*0.05;
-        tv.traverse(c => {
-            if(c.isMesh && c.material.uniforms && c.material.uniforms.time)
-                c.material.uniforms.time.value = time;
-        });
-    });
+    if(!isProjectOpen) tvObjects.forEach((tv,i) => { tv.position.y=Math.sin(time+i)*0.05; });
+    timeMaterials.forEach(mat => { mat.uniforms.time.value = time; });
 
-    if(ENABLE_SCREEN_LIGHT && frameCount % 4 === 0 && screenLights.length) {
-        screenLights.forEach((light, i) => {
-            const vid = tvVideoSources[i];
-            if(vid && vid.readyState >= 2) {
-                try {
-                    sampleCtx2d.drawImage(vid, 0, 0, 8, 8);
-                    const px = sampleCtx2d.getImageData(0, 0, 8, 8).data;
-                    let rr=0, gg=0, bb=0;
-                    for(let p=0; p<px.length; p+=4){ rr+=px[p]; gg+=px[p+1]; bb+=px[p+2]; }
-                    const n = px.length / 4;
-                    const lr=rr/n/255, lg=gg/n/255, lb=bb/n/255;
-                    const luma=lr*0.2126+lg*0.7152+lb*0.0722;
-                    light.color.setRGB(luma+(lr-luma)*2, luma+(lg-luma)*2, luma+(lb-luma)*2);
-                } catch(e) {}
-            }
-        });
+    if(ENABLE_SCREEN_LIGHT && frameCount % 6 === 0 && screenLights.length) {
+        const light = screenLights[0];
+        const vid = tvVideoSources[currentActiveIndex] || tvVideoSources[0];
+        if(vid && vid.readyState >= 2) {
+            try {
+                sampleCtx2d.drawImage(vid, 0, 0, 4, 4);
+                const px = sampleCtx2d.getImageData(0, 0, 4, 4).data;
+                let rr=0, gg=0, bb=0;
+                for(let p=0; p<px.length; p+=4){ rr+=px[p]; gg+=px[p+1]; bb+=px[p+2]; }
+                const n = px.length / 4;
+                const lr=rr/n/255, lg=gg/n/255, lb=bb/n/255;
+                const luma=lr*0.2126+lg*0.7152+lb*0.0722;
+                const tr=luma+(lr-luma)*2, tg=luma+(lg-luma)*2, tb=luma+(lb-luma)*2;
+                /* Lerp pour éviter les sauts de couleur brusques */
+                light.color.r+=(tr-light.color.r)*0.35;
+                light.color.g+=(tg-light.color.g)*0.35;
+                light.color.b+=(tb-light.color.b)*0.35;
+            } catch(e) {}
+        }
     }
     frameCount++;
     composer.render();
