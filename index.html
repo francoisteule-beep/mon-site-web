@@ -866,116 +866,20 @@ const PROJECTS = [
     },
 
         {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        title: 'COMMING SOON',
+        videoSrc: '/noproj.mp4',
         more: []
     },
-
-        {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+            {
+        title: 'COMMING SOON',
+        videoSrc: '/noproj.mp4',
         more: []
     },
-
-        {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+            {
+        title: 'COMMING SOON',
+        videoSrc: '/noproj.mp4',
         more: []
-    },
-
-        {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-
-        {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-
-        {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-
-        {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-
-        {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-
-        {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-
-        {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-
-        {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-         {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-         {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-         {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-         {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-         {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-         {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-         {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-         {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-         {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
-        more: []
-    },
-
+    }
     /* — pour ajouter un projet : copier un bloc { title, videoSrc, more:[] } — */
 ];
 
@@ -1033,8 +937,9 @@ function doSnap(){
 
     if(!isProjectOpen && hasInteracted){
         projectPreview.classList.add('visible');
-        btnProject.style.display = 'block';
-        setTimeout(() => { btnProject.classList.add('visible'); }, 10);
+        const isComingSoon = projectNames[currentActiveIndex] === 'COMMING SOON';
+        btnProject.style.display = isComingSoon ? 'none' : 'block';
+        if(!isComingSoon) setTimeout(() => { btnProject.classList.add('visible'); }, 10);
     }
 }
 
@@ -1137,8 +1042,9 @@ function doSnap(){
         panel.classList.remove('open');
         setTimeout(()=>{
             if(!isTouching && hasInteracted){
-                btnProject.style.display = 'block';
-                btnProject.classList.add('visible');
+                const isComingSoon = projectNames[currentActiveIndex] === 'COMMING SOON';
+                btnProject.style.display = isComingSoon ? 'none' : 'block';
+                if(!isComingSoon) btnProject.classList.add('visible');
                 projectPreview.classList.add('visible');
             }
         }, 800);
