@@ -112,11 +112,27 @@
     #grid-back.visible { opacity: 1; pointer-events: auto; }
     #grid-back:hover   { color: white; }
 
-    .nav-links a { color:white; text-decoration:none; margin:0 5px; opacity:.5; transition:opacity .3s; }
+    .nav-links { transition: opacity 0.4s ease; }
+    body.project-open .nav-links { display:none; }
+    .nav-links a { color:white; text-decoration:none; margin:0 5px; opacity:.5; transition:opacity .3s; position:relative; }
     .nav-links span { opacity:.3; }
-    .nav-links a:hover, .nav-links a.active { opacity:1; text-decoration:underline; text-underline-offset:4px; }
-    .info-link { color:white; text-decoration:none; margin-left:30px; opacity:.5; transition:opacity .3s; }
-    .info-link:hover, .info-link.active { opacity:1; text-decoration:underline; text-underline-offset:4px; }
+    .nav-links a::after {
+        content:''; position:absolute; bottom:-3px; left:0;
+        width:100%; height:1px; background:white;
+        transform:scaleX(0); transform-origin:left;
+        transition:transform 0.35s ease;
+    }
+    .nav-links a:hover, .nav-links a.active { opacity:1; }
+    .nav-links a:hover::after, .nav-links a.active::after { transform:scaleX(1); }
+    .info-link { color:white; text-decoration:none; margin-left:30px; opacity:.5; transition:opacity .3s; position:relative; }
+    .info-link::after {
+        content:''; position:absolute; bottom:-3px; left:0;
+        width:100%; height:1px; background:white;
+        transform:scaleX(0); transform-origin:left;
+        transition:transform 0.35s ease;
+    }
+    .info-link:hover, .info-link.active { opacity:1; }
+    .info-link:hover::after, .info-link.active::after { transform:scaleX(1); }
     .time { font-variant-numeric:tabular-nums; width:140px; text-align:right; }
 
     /* ── UI 3D ── */
@@ -157,19 +173,22 @@
     }
     #info-left {
         display: flex; flex-direction: column; justify-content: space-between;
-        padding: 120px 60px 60px 60px;
+        padding: 120px 50px 60px 50px;
         border-right: 1px solid rgba(255,255,255,0.07);
     }
     #info-bio {
-        font-size: clamp(1.5rem, 2.6vw, 3.2rem);
-        font-weight: 700; line-height: 1.12; letter-spacing: -0.01em;
+        display: flex; grid-template-columns: 1fr 1fr; gap: 32px;
+        margin: 0;
+    }
+    #info-bio p {
+        font-size: clamp(1.1rem, 1.9vw, 2rem);
+        font-weight: 700; line-height: 1.13; letter-spacing: -0.01em;
         color: white; margin: 0;
     }
-    #info-bio span { display: block; margin-top: 1.2em; }
     #info-meta {
-        font-size: .58rem; letter-spacing: 4px;
+        font-size: .56rem; letter-spacing: 4px;
         color: rgba(255,255,255,0.3);
-        display: flex; flex-direction: column; gap: 10px;
+        display: flex; gap: 32px;
     }
     #info-meta a { color: inherit; text-decoration: none; transition: color .2s; }
     #info-meta a:hover { color: white; }
@@ -231,14 +250,48 @@
     }
     .wheel-thumb.is-active { outline: 1px solid rgba(255,255,255,0.75); opacity: 1; }
 
-    /* ── PANNEAU PROJET ── */
-    #project-panel { position:fixed; top:0; left:0; width:100%; height:100%; z-index:90; transform:translateY(100%); transition:transform .8s cubic-bezier(.86,0,.07,1); background:#111; overflow-y:auto; }
+    /* ── PANNEAU PROJET (template unique) ── */
+    #project-panel { position:fixed; top:0; left:0; width:100%; height:100%; z-index:105; background:#000; transform:translateY(100%); transition:transform .8s cubic-bezier(.86,0,.07,1); overflow:hidden; }
     #project-panel.open { transform:translateY(0); }
-    .project-scroll-container { width:100%; min-height:100%; display:flex; flex-direction:column; align-items:center; padding:100px 40px 40px 40px; }
-    #btn-close { margin-top:50px; padding:10px 30px; background:transparent; border:1px solid white; color:white; cursor:pointer; border-radius:30px; transition:.3s; text-transform:uppercase; font-family:inherit; letter-spacing:1px; margin-bottom:50px; }
-    #btn-close:hover { background:white; color:black; }
-    .gallery-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:20px; width:100%; max-width:1200px; margin-top:60px; }
-    .gallery-media { width:100%; aspect-ratio:9/16; object-fit:cover; border-radius:4px; background:#222; }
+    #project-inner { position:absolute; top:0; left:0; width:100%; height:100%; overflow-y:auto; overflow-x:hidden; scroll-behavior:smooth; }
+    #project-hero { position:relative; height:100vh; flex-shrink:0; }
+    #project-video-player { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; }
+    #project-controls {
+        position:absolute; bottom:50px; left:50%; transform:translateX(-50%);
+        display:flex; gap:16px; align-items:center; z-index:2;
+    }
+    #project-controls button {
+        background:rgba(0,0,0,0.45); border:1px solid rgba(255,255,255,0.35); color:white;
+        padding:10px 22px; cursor:pointer; font-family:inherit; letter-spacing:2px;
+        font-size:.65rem; text-transform:uppercase; transition:.3s; backdrop-filter:blur(8px);
+    }
+    #project-controls button:hover { background:rgba(255,255,255,0.15); border-color:rgba(255,255,255,0.7); }
+    #project-controls button.active { border-color:white; background:rgba(255,255,255,0.1); }
+    #project-title-display {
+        position:absolute; top:32px; left:50%; transform:translateX(-50%);
+        font-size:.65rem; letter-spacing:4px; color:rgba(255,255,255,0.4);
+        z-index:2; white-space:nowrap; pointer-events:none;
+    }
+    #project-scroll-hint {
+        position:absolute; bottom:18px; left:50%; transform:translateX(-50%);
+        font-size:.55rem; letter-spacing:3px; color:rgba(255,255,255,0.3);
+        z-index:2; animation:projScrollPulse 2s ease-in-out infinite; pointer-events:none;
+    }
+    @keyframes projScrollPulse { 0%,100%{opacity:.3;transform:translateX(-50%) translateY(0)} 50%{opacity:.7;transform:translateX(-50%) translateY(6px)} }
+    #project-more { background:#0a0a0a; padding:80px 40px 80px; min-height:60vh; }
+    #project-more h2 { font-size:.65rem; letter-spacing:5px; color:rgba(255,255,255,0.3); margin-bottom:40px; }
+    #project-more-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
+    .proj-more-item { aspect-ratio:16/9; object-fit:cover; width:100%; background:#111; display:block; }
+    #project-close-btn {
+        position:absolute; top:24px; left:40px;
+        background:transparent; border:1px solid rgba(255,255,255,0.4); color:white;
+        cursor:pointer; font-family:inherit; font-size:.6rem; letter-spacing:3px;
+        text-transform:uppercase; transition:.3s; z-index:3;
+        padding:8px 20px; border-radius:30px;
+    }
+    #project-close-btn:hover { background:white; color:black; border-color:white; }
+
+
 
     @media (max-width:768px) {
         #site-header { padding:20px; font-size:11px; }
@@ -260,6 +313,7 @@
 <audio id="bg-static-audio" loop>
     <source src="Static.wav" type="audio/wav">
 </audio>
+
 
 <div id="loader">
     <div class="loader-logo">FRANTZ</div>
@@ -331,14 +385,12 @@
 
 <section id="page-info" class="page-section">
     <div id="info-left">
-        <p id="info-bio">
-            DA BASÉ À PARIS.
-            <span>SPÉCIALISÉ DANS L'EXPÉRIENCE 3D INTERACTIVE ET LE DESIGN MOTION.</span>
-        </p>
+        <div id="info-bio">
+            <p>Directeur Artistique & Designer basé à Paris. Design graphique, motion 2D/3D, production audiovisuelle.</p>        </div>
         <div id="info-meta">
-            <a href="mailto:contact@frantz.com">CONTACT@FRANTZ.COM</a>
-            <a href="#" target="_blank">INSTAGRAM</a>
-            <a href="#" target="_blank">LINKEDIN</a>
+            <a href="mailto:contact.frantz75@gmail.com">CONTACT.FRANTZ75@GMAIL.COM</a>
+            <a href="https://www.linkedin.com/in/fran%C3%A7ois-teul%C3%A9/" target="_blank">LINKEDIN</a>
+            <a href="https://www.instagram.com/_fran.tl/" target="_blank">INSTAGRAM</a>
         </div>
     </div>
     <div id="info-right">
@@ -346,20 +398,28 @@
     </div>
 </section>
 
+<!-- ── PANNEAU PROJET (template unique) ── -->
 <div id="project-panel">
-    <div class="project-scroll-container">
-        <h1 id="project-title-overlay" style="font-size:3rem;margin-bottom:30px;">TITRE DU PROJET</h1>
-        <p id="project-description" style="max-width:600px;margin:0 auto;color:#aaa;font-size:1.1rem;line-height:1.5;">DESCRIPTION.</p>
-        <div id="project-gallery" class="gallery-grid"></div>
-        <button id="btn-close">RETOUR</button>
+    <button id="project-close-btn">← RETOUR</button>
+    <div id="project-inner">
+        <div id="project-hero">
+            <video id="project-video-player" playsinline preload="metadata"></video>
+            <div id="project-title-display"></div>
+            <div id="project-controls">
+                <button id="proj-play-btn">PLAY</button>
+                <button id="proj-sound-btn">SON</button>
+                <button id="proj-fs-btn">PLEIN ÉCRAN</button>
+            </div>
+            <div id="project-scroll-hint">↓ &nbsp; EN SAVOIR PLUS</div>
+        </div>
+        <div id="project-more">
+            <h2>EN COULISSES</h2>
+            <div id="project-more-grid"></div>
+        </div>
     </div>
 </div>
 
-<video id="projectVideo" crossorigin="anonymous" playsinline muted loop style="display:none;"><source src="https://assets.frantzimann.org/pickles-nov-2025/pickles-nov-2025.mp4" type="video/mp4"></video>
-<video id="videoCecec" crossorigin="anonymous" playsinline muted loop style="display:none;"><source src="https://assets.frantzimann.org/boiler-room-2025/boiler-2025-2.mp4" type="video/mp4"></video>
-<video id="videoNinaadidas" crossorigin="anonymous" playsinline muted loop style="display:none;"><source src="https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-202610.mp4" type="video/mp4"></video>
-<video id="videohermes" crossorigin="anonymous" playsinline muted loop style="display:none;"><source src="https://assets.frantzimann.org/carre-hermes/carre-hermes2.mp4" type="video/mp4"></video>
-<video id="videoNoproj"     playsinline muted loop style="display:none;"><source src="./noproj.mp4" type="video/mp4"></video>
+<!-- Les éléments <video> pour les TVs sont créés dynamiquement depuis PROJECTS -->
 
 <script>
 /* ── SOUND SYSTEM ── */
@@ -370,8 +430,23 @@
     const iconOn = document.getElementById('icon-sound-on');
     const soundHint = document.getElementById('sound-hint');
     let isPlaying = false;
+    let _pausedByVideo = false;
 
-    audio.volume = 0.3; 
+    audio.volume = 0.3;
+
+    window.pauseAmbient = function() {
+        if(isPlaying && !_pausedByVideo) {
+            audio.pause();
+            _pausedByVideo = true;
+        }
+    };
+    window.resumeAmbient = function() {
+        if(_pausedByVideo) {
+            _pausedByVideo = false;
+            audio.play().catch(function(){});
+            isPlaying = true;
+        }
+    }; 
 
     // Fonction pour activer le son
     const startAudio = () => {
@@ -753,7 +828,158 @@ const loaderLabel=document.getElementById('loader-label');
 const swipeHint=document.getElementById('swipe-hint');
 const soundHint=document.getElementById('sound-hint');
 let gltfLoaded=false, videosReady=0, rgbLoaded=false;
-const TOTAL_VIDEOS=5; 
+
+/* ══════════════════════════════════════════════
+   PROJETS — ajouter / modifier ici
+   ══════════════════════════════════════════════ */
+const PROJECTS = [
+    {
+        title: 'BOILER ROOM',
+        videoSrc: 'https://assets.frantzimann.org/boiler-room-2025/boiler-2025-2.mp4',
+        more: [
+            { type:'img',   src:'./EXPORT INSTA/1.jpg' },
+            { type:'video', src:'./EXPORT INSTA/1st spinn.mp4' },
+            { type:'img',   src:'./EXPORT INSTA/2.jpg' },
+            { type:'video', src:'./EXPORT INSTA/boiler room2.mp4' },
+            { type:'video', src:'./EXPORT INSTA/cecec.mp4' },
+        ]
+    },
+    {
+        title: 'PICKLES SESH × STUDIO 56',
+        videoSrc: 'https://assets.frantzimann.org/pickles-nov-2025/pickles-nov-2025.mp4',
+        more: []
+    },
+    {
+        title: 'OBJECTIF N1 — ADIDAS BACKSTAGE',
+        videoSrc: 'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-202610.mp4',
+        more: []
+    },
+    {
+        title: 'HERMÈS × RICK OWENS — CARRÉ',
+        videoSrc: 'https://assets.frantzimann.org/carre-hermes/carre-hermes2.mp4',
+        more: []
+    },
+    {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+
+        {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+
+        {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+
+        {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+
+        {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+
+        {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+
+        {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+
+        {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+
+        {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+
+        {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+
+        {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+
+        {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+         {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+         {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+         {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+         {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+         {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+         {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+         {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+         {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+         {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        more: []
+    },
+
+    /* — pour ajouter un projet : copier un bloc { title, videoSrc, more:[] } — */
+];
+
+const TOTAL_VIDEOS = PROJECTS.length;
 
 function setProgress(v,label){ const pct=Math.min(Math.round(v),100); loaderBar.style.width=pct+'%'; loaderPercent.innerText=pct+'%'; if(label) loaderLabel.innerText=label; }
 function tryAutoplay(){ if(window.resumeVideos) window.resumeVideos(); }
@@ -777,16 +1003,12 @@ const canvas=document.querySelector('canvas.webgl');
 const btnProject=document.getElementById('btn-project');
 const projectPreview=document.getElementById('project-preview');
 const projectPanel=document.getElementById('project-panel');
-const btnClose=document.getElementById('btn-close');
-const projectTitleOverlay=document.getElementById('project-title-overlay');
-const projectDescription=document.getElementById('project-description');
-const projectGallery=document.getElementById('project-gallery');
 
 const scene=new THREE.Scene();
-const projectNames=["BOILER ROOM","PICKLES SESH X STUDIO 56","OBJECTIF N1 ADIDAS BACKSTAGE VIDEO","HERMÈS X RICK OWENS CARRÉ","COMMING SOON","COMMING SOON","COMMING SOON","COMMING SOON"];
+const projectNames = PROJECTS.map(p => p.title);
 scene.background=new THREE.Color(0x050505); scene.fog=new THREE.FogExp2(0x050505,0.9);
 
-const radius=2.1,tvCount=8,anglePerTV=(Math.PI*2)/tvCount;
+const radius=2.1,tvCount=PROJECTS.length,anglePerTV=(Math.PI*2)/tvCount;
 const carouselGroup=new THREE.Group(); scene.add(carouselGroup);
 
 let hasInteracted = false;
@@ -811,26 +1033,123 @@ function doSnap(){
 
     if(!isProjectOpen && hasInteracted){
         projectPreview.classList.add('visible');
-        
-        if (name === "COMMING SOON") {
-            btnProject.style.display = 'none';
-            btnProject.classList.remove('visible');
-        } else {
-            btnProject.style.display = 'block';
-            setTimeout(() => { btnProject.classList.add('visible'); }, 10);
-        }
-    } 
+        btnProject.style.display = 'block';
+        setTimeout(() => { btnProject.classList.add('visible'); }, 10);
+    }
 }
 
-btnProject.addEventListener('click',()=>{ isProjectOpen=true; projectPanel.classList.add('open'); btnProject.classList.remove('visible'); projectPreview.classList.remove('visible'); projectTitleOverlay.innerText=projectNames[currentActiveIndex]; if(currentActiveIndex===0){ projectDescription.innerText="LOREM IPSUM DOLOR SIT AMET."; projectGallery.innerHTML=`<img src="./EXPORT INSTA/1.jpg" class="gallery-media" loading="lazy"><video src="./EXPORT INSTA/1st spinn.mp4" class="gallery-media" autoplay loop muted playsinline></video><img src="./EXPORT INSTA/2.jpg" class="gallery-media" loading="lazy"><video src="./EXPORT INSTA/boiler room2.mp4" class="gallery-media" autoplay loop muted playsinline></video><video src="./EXPORT INSTA/cecec.mp4" class="gallery-media" autoplay loop muted playsinline></video>`; } else { projectDescription.innerText="DESCRIPTION STANDARD."; projectGallery.innerHTML=""; } });
-btnClose.addEventListener('click',()=>{ isProjectOpen=false; projectPanel.classList.remove('open'); setTimeout(()=>{ if(!isTouching && hasInteracted){ 
-    const name = projectNames[currentActiveIndex];
-    if(name !== "COMMING SOON") {
-        btnProject.style.display = 'block';
-        btnProject.classList.add('visible'); 
+/* ══════════════════════════════════════════════
+   PANNEAU PROJET — contrôleur unique
+   ══════════════════════════════════════════════ */
+(function(){
+    const panel     = projectPanel;
+    const inner     = document.getElementById('project-inner');
+    const vid       = document.getElementById('project-video-player');
+    const titleEl   = document.getElementById('project-title-display');
+    const moreGrid  = document.getElementById('project-more-grid');
+    const playBtn   = document.getElementById('proj-play-btn');
+    const soundBtn  = document.getElementById('proj-sound-btn');
+    const fsBtn     = document.getElementById('proj-fs-btn');
+    const closeBtn  = document.getElementById('project-close-btn');
+
+    let soundOn = false;
+    vid.muted = true;
+
+    function syncPlayBtn() {
+        playBtn.textContent = vid.paused ? 'PLAY' : 'PAUSE';
+        playBtn.classList.toggle('active', !vid.paused);
     }
-    projectPreview.classList.add('visible'); 
-} },800); });
+    function syncSoundBtn() {
+        soundBtn.textContent = soundOn ? 'COUPER LE SON' : 'SON';
+        soundBtn.classList.toggle('active', soundOn);
+    }
+
+    vid.addEventListener('play',  syncPlayBtn);
+    vid.addEventListener('pause', ()=>{ syncPlayBtn(); if(soundOn && window.resumeAmbient) window.resumeAmbient(); });
+    vid.addEventListener('ended', ()=>{ syncPlayBtn(); if(soundOn && window.resumeAmbient) window.resumeAmbient(); });
+
+    playBtn.addEventListener('click', ()=>{
+        if(vid.paused) { vid.play().catch(()=>{}); if(soundOn && window.pauseAmbient) window.pauseAmbient(); }
+        else           { vid.pause(); }
+    });
+
+    soundBtn.addEventListener('click', ()=>{
+        soundOn = !soundOn;
+        vid.muted = !soundOn;
+        syncSoundBtn();
+        if(soundOn && !vid.paused) { if(window.pauseAmbient)  window.pauseAmbient(); }
+        else                       { if(window.resumeAmbient) window.resumeAmbient(); }
+    });
+
+    fsBtn.addEventListener('click', ()=>{
+        if(document.fullscreenElement) { document.exitFullscreen(); }
+        else if(panel.requestFullscreen)       { panel.requestFullscreen(); }
+        else if(panel.webkitRequestFullscreen) { panel.webkitRequestFullscreen(); }
+    });
+
+    closeBtn.addEventListener('click', ()=> window.closeProject());
+
+    /* ── Ouvrir un projet par son index dans PROJECTS ── */
+    window.openProject = function(idx) {
+        const proj = PROJECTS[idx];
+        if(!proj) return;
+
+        isProjectOpen = true;
+        document.body.classList.add('project-open');
+
+        // Titre
+        titleEl.textContent = proj.title;
+
+        // Vidéo
+        vid.src = proj.videoSrc;
+        vid.muted = true;
+        soundOn = false;
+        syncPlayBtn();
+        syncSoundBtn();
+
+        // Galerie "En coulisses"
+        moreGrid.innerHTML = '';
+        proj.more.forEach(function(item){
+            if(item.type === 'img') {
+                const img = document.createElement('img');
+                img.src = item.src; img.className = 'proj-more-item'; img.loading = 'lazy';
+                moreGrid.appendChild(img);
+            } else if(item.type === 'video') {
+                const v = document.createElement('video');
+                v.src = item.src; v.className = 'proj-more-item';
+                v.autoplay = true; v.loop = true; v.muted = true; v.playsInline = true;
+                moreGrid.appendChild(v);
+            }
+        });
+
+        inner.scrollTop = 0;
+        panel.classList.add('open');
+        vid.play().catch(()=>{});
+    };
+
+    window.closeProject = function() {
+        isProjectOpen = false;
+        document.body.classList.remove('project-open');
+        vid.pause();
+        vid.src = '';
+        if(soundOn) { soundOn = false; vid.muted = true; syncSoundBtn(); }
+        if(window.resumeAmbient) window.resumeAmbient();
+        panel.classList.remove('open');
+        setTimeout(()=>{
+            if(!isTouching && hasInteracted){
+                btnProject.style.display = 'block';
+                btnProject.classList.add('visible');
+                projectPreview.classList.add('visible');
+            }
+        }, 800);
+    };
+})();
+
+btnProject.addEventListener('click',()=>{
+    btnProject.classList.remove('visible');
+    projectPreview.classList.remove('visible');
+    window.openProject(currentActiveIndex);
+});
 
 window.addEventListener('wheel',(e)=>{ 
     if(window.currentPage!=='selects'||isProjectOpen)return; 
@@ -863,20 +1182,25 @@ window.addEventListener('touchmove',(e)=>{
 },{ passive:true });
 
 setProgress(10,'CHARGEMENT VIDÉOS');
-let videoTexture=null; const video=document.getElementById('projectVideo');
-if(video){ videoTexture=new THREE.VideoTexture(video); videoTexture.colorSpace=THREE.SRGBColorSpace; videoTexture.flipY=true; video.addEventListener('canplay',onVideoReady,{once:true}); video.load(); }
-
-let cececTexture=null; const videoCecec=document.getElementById('videoCecec');
-if(videoCecec){ cececTexture=new THREE.VideoTexture(videoCecec); cececTexture.colorSpace=THREE.SRGBColorSpace; cececTexture.flipY=true; videoCecec.addEventListener('canplay',onVideoReady,{once:true}); videoCecec.load(); }
-
-let ninaadidasTexture=null; const videoninaadidas=document.getElementById('videoNinaadidas');
-if(videoninaadidas){ ninaadidasTexture=new THREE.VideoTexture(videoninaadidas); ninaadidasTexture.colorSpace=THREE.SRGBColorSpace; ninaadidasTexture.flipY=true; videoninaadidas.addEventListener('canplay',onVideoReady,{once:true}); videoninaadidas.load(); }
-
-let hermesTexture=null; const videohermes=document.getElementById('videohermes');
-if(videohermes){ hermesTexture=new THREE.VideoTexture(videohermes); hermesTexture.colorSpace=THREE.SRGBColorSpace; hermesTexture.flipY=true; videohermes.addEventListener('canplay',onVideoReady,{once:true}); videohermes.load(); }
-
-let noprojTexture=null; const videoNoproj=document.getElementById('videoNoproj');
-if(videoNoproj){ noprojTexture=new THREE.VideoTexture(videoNoproj); noprojTexture.colorSpace=THREE.SRGBColorSpace; noprojTexture.flipY=true; videoNoproj.addEventListener('canplay',onVideoReady,{once:true}); videoNoproj.load(); }
+/* Créer les <video> et textures Three.js dynamiquement depuis PROJECTS */
+const projectVideos = PROJECTS.map(function(proj) {
+    const v = document.createElement('video');
+    v.crossOrigin = 'anonymous';
+    v.setAttribute('playsinline', '');
+    v.muted = true; v.loop = true; v.style.display = 'none';
+    const s = document.createElement('source');
+    s.src = proj.videoSrc; s.type = 'video/mp4';
+    v.appendChild(s);
+    document.body.appendChild(v);
+    return v;
+});
+const projectTextures = projectVideos.map(function(v) {
+    const tex = new THREE.VideoTexture(v);
+    tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = true;
+    v.addEventListener('canplay', onVideoReady, {once:true});
+    v.load();
+    return tex;
+});
 
 const textureLoader = new THREE.TextureLoader();
 let rgbTexture = null;
@@ -920,11 +1244,7 @@ new GLTFLoader().load('https://assets.frantzimann.org/obj-3D/crt_tv.glb',(gltf)=
             if(c.material) c.material.aoMapIntensity=1.5; 
             if((c.material&&c.material.name==='TVScreen')||c.name==='defaultMaterial_3'){ 
                 
-                let activeVideo = videoTexture;
-                if(i===0 && cececTexture) activeVideo = cececTexture;
-                else if(i===2 && ninaadidasTexture) activeVideo = ninaadidasTexture;
-                else if(i===3 && hermesTexture) activeVideo = hermesTexture;
-                else if(i >= 4 && i <= 7 && noprojTexture) activeVideo = noprojTexture;
+                const activeVideo = projectTextures[i] || null;
 
                 c.material = new THREE.ShaderMaterial({
                     uniforms: THREE.UniformsUtils.clone(CRTShader.uniforms),
@@ -982,16 +1302,15 @@ new GLTFLoader().load('https://assets.frantzimann.org/obj-3D/crt_tv.glb',(gltf)=
 window.addEventListener('resize',()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight); composer.setSize(window.innerWidth,window.innerHeight); });
 
 // ── Gestion centralisée des vidéos ──
-const allVideos = [video, videoCecec, videoninaadidas, videohermes, videoNoproj].filter(Boolean);
-window.pauseVideos  = () => allVideos.forEach(v => v.pause());
-window.resumeVideos = () => allVideos.forEach(v => v.play().catch(()=>{}));
+window.pauseVideos  = () => projectVideos.forEach(v => v.pause());
+window.resumeVideos = () => projectVideos.forEach(v => v.play().catch(()=>{}));
 
 // Débloque l'autoplay au premier geste utilisateur
 document.addEventListener('click',     () => { if(window.currentPage==='selects') window.resumeVideos(); }, { once:true });
 document.addEventListener('touchstart', () => { if(window.currentPage==='selects') window.resumeVideos(); }, { once:true });
 
 // Canvas pour sampler la couleur moyenne des vidéos
-const tvVideoSources = [videoCecec, video, videoninaadidas, videohermes, videoNoproj, videoNoproj, videoNoproj, videoNoproj];
+const tvVideoSources = projectVideos;
 const sampleCvs = document.createElement('canvas');
 sampleCvs.width = 4; sampleCvs.height = 4;
 const sampleCtx2d = sampleCvs.getContext('2d', { willReadFrequently: true });
