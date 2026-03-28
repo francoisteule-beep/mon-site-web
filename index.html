@@ -143,11 +143,43 @@
         background:#050505; z-index:50; display:flex; flex-direction:column;
         padding:120px 40px 40px 40px;
         opacity:0; pointer-events:none; transition:opacity .5s ease; overflow-y:auto;
+        will-change: opacity;
     }
     .page-section.active { opacity:1; pointer-events:auto; }
     .index-item { display:flex; justify-content:space-between; border-bottom:1px solid #333; padding:20px 0; font-size:1.2rem; cursor:pointer; transition:.3s; }
     .index-item:hover { color:#aaa; border-color:#fff; }
-    .info-content { max-width:600px; margin:0 auto; text-align:center; line-height:1.6; }
+    /* ── PAGE INFO ── */
+    #page-info {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+    #info-left {
+        display: flex; flex-direction: column; justify-content: space-between;
+        padding: 120px 60px 60px 60px;
+        border-right: 1px solid rgba(255,255,255,0.07);
+    }
+    #info-bio {
+        font-size: clamp(1.5rem, 2.6vw, 3.2rem);
+        font-weight: 700; line-height: 1.12; letter-spacing: -0.01em;
+        color: white; margin: 0;
+    }
+    #info-bio span { display: block; margin-top: 1.2em; }
+    #info-meta {
+        font-size: .58rem; letter-spacing: 4px;
+        color: rgba(255,255,255,0.3);
+        display: flex; flex-direction: column; gap: 10px;
+    }
+    #info-meta a { color: inherit; text-decoration: none; transition: color .2s; }
+    #info-meta a:hover { color: white; }
+    #info-right {
+        position: relative; overflow: hidden;
+    }
+    #info-cube-canvas {
+        position: absolute; inset: 0; width: 100%; height: 100%;
+        display: block;
+    }
 
     /* ── PAGE PHOTO WHEEL ── */
     #page-photo { padding: 0 !important; overflow: hidden !important; }
@@ -298,11 +330,19 @@
 </section>
 
 <section id="page-info" class="page-section">
-    <div class="info-content">
-        <h1>FRANTZ</h1><br>
-        <p>DA BASÉ À PARIS.</p>
-        <p>SPÉCIALISÉ DANS L'EXPÉRIENCE 3D INTERACTIVE ET LE DESIGN MOTION.</p>
-        <br><br><p>CONTACT@FRANTZ.COM</p><p>INSTAGRAM / LINKEDIN</p>
+    <div id="info-left">
+        <p id="info-bio">
+            DA BASÉ À PARIS.
+            <span>SPÉCIALISÉ DANS L'EXPÉRIENCE 3D INTERACTIVE ET LE DESIGN MOTION.</span>
+        </p>
+        <div id="info-meta">
+            <a href="mailto:contact@frantz.com">CONTACT@FRANTZ.COM</a>
+            <a href="#" target="_blank">INSTAGRAM</a>
+            <a href="#" target="_blank">LINKEDIN</a>
+        </div>
+    </div>
+    <div id="info-right">
+        <canvas id="info-cube-canvas"></canvas>
     </div>
 </section>
 
@@ -479,6 +519,17 @@ var PHOTOS_CAPTURE = [
     Promise.all(_decodePromises).then(function() {
         _preloaded = true;
         if(_onPreloaded) _onPreloaded();
+        /* Pre-warm : positionne tous les éléments pendant que la section est     */
+        /* encore invisible. Chrome (will-change:opacity) rasterise en idle       */
+        /* → zéro paint au premier scroll de l'utilisateur.                       */
+        render();
+    });
+
+    /* Retour d'onglet : Chrome évicte le cache GPU → relancer le warm-up */
+    document.addEventListener('visibilitychange', function() {
+        if(document.visibilityState === 'visible' && window.currentPage === 'photo') {
+            startPhotoWheelIfNeeded();
+        }
     });
 
     /* ── Cache viewport ── */
@@ -618,6 +669,8 @@ function switchPage(target) {
         if(window.stopPhotoWheel) window.stopPhotoWheel();
     }
     if(target === 'photo' && window.initPhotoWheel) window.initPhotoWheel();
+    if(target === 'info'  && window.startInfoCube)  window.startInfoCube();
+    if(target !== 'info'  && window.stopInfoCube)   window.stopInfoCube();
 }
 Object.keys(navLinks).forEach(function(k){ if(navLinks[k]) navLinks[k].addEventListener('click', function(){ switchPage(k); }); });
 </script>
@@ -991,9 +1044,11 @@ document.addEventListener('visibilitychange', () => {
         window.stop3D();
         window.pauseVideos();
         if(window.stopPhotoWheel) window.stopPhotoWheel();
+        if(window.stopInfoCube)   window.stopInfoCube();
     } else {
         if(window.currentPage === 'selects') { window.start3D(); window.resumeVideos(); }
         if(window.currentPage === 'photo'   && window.startPhotoWheel) window.startPhotoWheel();
+        if(window.currentPage === 'info'    && window.startInfoCube)   window.startInfoCube();
     }
     
 });
@@ -1001,6 +1056,65 @@ const loader = new GLTFLoader();
 loader.load('https://assets.frantzimann.org/obj-3D/crt_tv.glb', (gltf) => {
     scene.add(gltf.scene);
 });
+
+// ── Scène cube — section INFO ──
+(function() {
+    const cvs = document.getElementById('info-cube-canvas');
+    const rightEl = document.getElementById('info-right');
+
+    const iRenderer = new THREE.WebGLRenderer({ canvas: cvs, antialias: true, alpha: true });
+    iRenderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+    iRenderer.setClearColor(0x000000, 0);
+
+    const iScene  = new THREE.Scene();
+    const iCamera = new THREE.PerspectiveCamera(42, 1, 0.1, 50);
+    iCamera.position.set(2.8, 1.6, 3.5);
+    iCamera.lookAt(0, 0, 0);
+
+    /* Lumières */
+    iScene.add(new THREE.AmbientLight(0xffffff, 0.25));
+    const dKey = new THREE.DirectionalLight(0xffffff, 2.5);
+    dKey.position.set(4, 6, 3); iScene.add(dKey);
+    const dFill = new THREE.DirectionalLight(0xff2200, 1.2);
+    dFill.position.set(-3, -2, 1); iScene.add(dFill);
+    const dRim = new THREE.DirectionalLight(0x4444ff, 0.6);
+    dRim.position.set(0, -4, -3); iScene.add(dRim);
+
+    /* Cube */
+    const cube = new THREE.Mesh(
+        new THREE.BoxGeometry(1.6, 1.6, 1.6),
+        new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.25, metalness: 0.9 })
+    );
+    iScene.add(cube);
+
+    /* Resize */
+    function resize() {
+        const w = rightEl.clientWidth || window.innerWidth / 2;
+        const h = rightEl.clientHeight || window.innerHeight;
+        iRenderer.setSize(w, h);
+        iCamera.aspect = w / h;
+        iCamera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', resize);
+
+    /* Boucle — rotation Z, 360° toutes les 5s */
+    let iRaf = null;
+    const PERIOD = 5000;
+
+    window.startInfoCube = function() {
+        resize();
+        if(iRaf) return;
+        function tick() {
+            cube.rotation.z = (performance.now() / PERIOD) * Math.PI * 2;
+            iRenderer.render(iScene, iCamera);
+            iRaf = requestAnimationFrame(tick);
+        }
+        tick();
+    };
+    window.stopInfoCube = function() {
+        if(iRaf) { cancelAnimationFrame(iRaf); iRaf = null; }
+    };
+})();
 </script>
 </body>
 </html>
