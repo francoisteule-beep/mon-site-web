@@ -245,6 +245,56 @@ body {
 .item-row.dragging { opacity: 0.4; border-style: dashed; }
 .item-row.drag-over { border-color: rgba(255,255,255,0.5); }
 
+/* ── Thumbnail vidéo ── */
+.item-thumb-video {
+    width: 56px; height: 40px; object-fit: cover;
+    flex-shrink: 0; background: #111; display: block;
+}
+
+/* ── En coulisses drag & drop ── */
+.more-list {
+    display: flex; flex-direction: column; gap: 6px;
+    min-height: 40px; margin-bottom: 10px;
+}
+.more-item {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg); border: 1px solid var(--border);
+    padding: 8px 10px; cursor: default;
+    transition: border-color .2s;
+}
+.more-item.dragging  { opacity: 0.4; border-style: dashed; }
+.more-item.drag-over { border-color: rgba(255,255,255,0.5); }
+.more-thumb {
+    width: 48px; height: 34px; object-fit: cover;
+    flex-shrink: 0; background: #1a1a1a;
+}
+.more-thumb-vid {
+    width: 48px; height: 34px; object-fit: cover;
+    flex-shrink: 0; background: #1a1a1a;
+    pointer-events: none;
+}
+.more-type { font-size: .42rem; letter-spacing: 2px; color: var(--muted);
+    border: 1px solid var(--border); padding: 2px 7px; flex-shrink: 0; }
+.more-url  { flex: 1; font-size: .48rem; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.more-del  { background: none; border: none; color: var(--muted);
+    cursor: pointer; font-size: .9rem; line-height: 1;
+    padding: 0 4px; transition: color .2s; flex-shrink: 0; }
+.more-del:hover { color: var(--danger); }
+.more-add-row {
+    display: flex; gap: 8px; align-items: center;
+    margin-top: 6px;
+}
+.more-add-row .form-input { flex: 1; }
+.more-add-row .form-select { width: 100px; flex-shrink: 0; }
+.btn-small {
+    font-family: inherit; font-size: .5rem; letter-spacing: 2px;
+    text-transform: uppercase; cursor: pointer; background: none;
+    border: 1px solid var(--border2); color: var(--muted);
+    padding: 8px 14px; transition: border-color .2s, color .2s; flex-shrink: 0;
+}
+.btn-small:hover { border-color: var(--accent); color: var(--accent); }
+
 .empty-state {
     padding: 60px; text-align: center;
     font-size: .52rem; letter-spacing: 2px; color: var(--muted);
@@ -362,8 +412,16 @@ body {
                     <input class="form-input" id="proj-video-url" type="url" placeholder="https://...">
                 </div>
                 <div class="form-group full">
-                    <label class="form-label">Médias "En coulisses" (URLs séparées par des virgules)</label>
-                    <textarea class="form-textarea" id="proj-more" placeholder="https://url1.jpg, https://url2.jpg"></textarea>
+                    <label class="form-label">Médias "En coulisses" — glisser pour réordonner</label>
+                    <div class="more-list" id="proj-more-list"></div>
+                    <div class="more-add-row">
+                        <input class="form-input" id="proj-more-url" type="url" placeholder="https://url-video.mp4 ou image.jpg">
+                        <select class="form-select" id="proj-more-type">
+                            <option value="video">Vidéo</option>
+                            <option value="img">Image</option>
+                        </select>
+                        <button class="btn-small" id="btn-add-more">+ AJOUTER</button>
+                    </div>
                 </div>
                 <div class="form-actions">
                     <button class="btn-primary" id="btn-add-project">AJOUTER LE PROJET</button>
@@ -621,9 +679,10 @@ async function loadProjects() {
             const isSoon = p.status === 'coming_soon';
             row.dataset.id = p.id;
             row.draggable = true;
+            const vidThumb = p.video_url ? `<video class="item-thumb-video" src="${p.video_url}" preload="metadata" muted></video>` : `<div class="item-thumb-placeholder">VID</div>`;
             row.innerHTML = `
                 <div class="drag-handle" title="Glisser pour réordonner">⠿</div>
-                <div class="item-thumb-placeholder">VID</div>
+                ${vidThumb}
                 <div class="item-info">
                     <div class="item-title">${p.title || '—'}</div>
                     <div class="item-meta">${p.video_url || '—'}</div>
@@ -673,16 +732,88 @@ async function loadProjects() {
     }
 }
 
+// ══════════════════════════════════════════════
+//  EN COULISSES — drag & drop list
+// ══════════════════════════════════════════════
+let editingMore = []; // [{type, src}, ...]
+
+function renderMoreList() {
+    const list = document.getElementById('proj-more-list');
+    list.innerHTML = '';
+    if (!editingMore.length) {
+        list.innerHTML = '<div style="font-size:.48rem;letter-spacing:2px;color:var(--muted);padding:10px 0">Aucun média — ajoutez-en ci-dessous</div>';
+        return;
+    }
+    editingMore.forEach((item, idx) => {
+        const el = document.createElement('div');
+        el.className = 'more-item';
+        el.draggable = true;
+        el.dataset.idx = idx;
+        const isVid = item.type === 'video';
+        el.innerHTML = `
+            <div class="drag-handle">⠿</div>
+            ${isVid
+                ? `<video class="more-thumb-vid" src="${item.src}" preload="metadata" muted></video>`
+                : `<img class="more-thumb" src="${item.src}" loading="lazy">`}
+            <span class="more-type">${isVid ? 'VID' : 'IMG'}</span>
+            <span class="more-url" title="${item.src}">${item.src}</span>
+            <button class="more-del" data-idx="${idx}">×</button>`;
+        el.querySelector('.more-del').addEventListener('click', () => {
+            editingMore.splice(idx, 1);
+            renderMoreList();
+        });
+        // drag
+        el.addEventListener('dragstart', e => {
+            e.dataTransfer.effectAllowed = 'move';
+            el.classList.add('dragging');
+            list._draggingMore = el;
+        });
+        el.addEventListener('dragend', () => {
+            el.classList.remove('dragging');
+            list.querySelectorAll('.more-item').forEach(r => r.classList.remove('drag-over'));
+            // Sync editingMore order from DOM
+            editingMore = [...list.querySelectorAll('.more-item[data-idx]')].map(r => {
+                return editingMore[parseInt(r.dataset.idx)];
+            }).filter(Boolean);
+            // Re-render avec les bons index
+            renderMoreList();
+        });
+        el.addEventListener('dragover', e => {
+            e.preventDefault();
+            if (list._draggingMore && list._draggingMore !== el) {
+                list.querySelectorAll('.more-item').forEach(r => r.classList.remove('drag-over'));
+                el.classList.add('drag-over');
+                const items = [...list.querySelectorAll('.more-item')];
+                const fromIdx = items.indexOf(list._draggingMore);
+                const toIdx   = items.indexOf(el);
+                if (fromIdx < toIdx) el.after(list._draggingMore);
+                else el.before(list._draggingMore);
+            }
+        });
+        list.appendChild(el);
+    });
+}
+
+document.getElementById('btn-add-more').addEventListener('click', () => {
+    const url  = document.getElementById('proj-more-url').value.trim();
+    const type = document.getElementById('proj-more-type').value;
+    if (!url) return;
+    editingMore.push({ type, src: url });
+    document.getElementById('proj-more-url').value = '';
+    renderMoreList();
+});
+
 // ── État édition ──────────────────────────────────────────────
 let editingProjectId = null;
 
 function startEditProject(p) {
     editingProjectId = p.id;
+    editingMore = Array.isArray(p.more) ? p.more.map(m => ({...m})) : [];
     document.getElementById('proj-form-title').textContent = 'MODIFIER — ' + p.title;
     document.getElementById('proj-title').value     = p.title || '';
     document.getElementById('proj-status').value    = p.status || 'published';
     document.getElementById('proj-video-url').value = p.video_url || '';
-    document.getElementById('proj-more').value      = (p.more || []).join(', ');
+    renderMoreList();
     document.getElementById('btn-add-project').textContent = 'METTRE À JOUR';
     document.getElementById('btn-cancel-edit').style.display = 'inline-block';
     document.getElementById('form-projects').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -690,15 +821,16 @@ function startEditProject(p) {
 
 function resetProjectForm() {
     editingProjectId = null;
+    editingMore = [];
     document.getElementById('proj-form-title').textContent    = 'NOUVEAU PROJET';
     document.getElementById('proj-title').value               = '';
     document.getElementById('proj-video-url').value           = '';
-    document.getElementById('proj-more').value                = '';
     document.getElementById('proj-video-file').value          = '';
     document.getElementById('proj-file-label').textContent    = 'Glisser ou cliquer pour choisir une vidéo (.mp4)';
     document.getElementById('proj-file-label').classList.remove('file-chosen');
     document.getElementById('btn-add-project').textContent    = 'AJOUTER LE PROJET';
     document.getElementById('btn-cancel-edit').style.display  = 'none';
+    renderMoreList();
 }
 
 document.getElementById('btn-cancel-edit').addEventListener('click', resetProjectForm);
@@ -712,7 +844,6 @@ document.getElementById('btn-add-project').addEventListener('click', async () =>
     const statusEl = document.getElementById('proj-status-msg');
 
     if (!title) return setStatus(statusEl, 'Titre requis', 'err');
-    // En mode édition, l'URL peut rester inchangée (déjà remplie)
     if (!editingProjectId && !file && !videoUrl) return setStatus(statusEl, 'Fichier ou URL requis', 'err');
 
     const btn = document.getElementById('btn-add-project');
@@ -723,13 +854,11 @@ document.getElementById('btn-add-project').addEventListener('click', async () =>
         if (file) {
             videoUrl = await uploadFile(file, 'videos', document.getElementById('proj-upload-bar'));
         }
-        const moreArr = more ? more.split(',').map(s => s.trim()).filter(Boolean) : [];
-
         if (editingProjectId) {
-            await api('PUT', '/projects/' + editingProjectId, { title, status, video_url: videoUrl, more: moreArr });
+            await api('PUT', '/projects/' + editingProjectId, { title, status, video_url: videoUrl, more: editingMore });
             setStatus(statusEl, 'Projet mis à jour !', 'ok');
         } else {
-            await api('POST', '/projects', { title, status, video_url: videoUrl, more: moreArr });
+            await api('POST', '/projects', { title, status, video_url: videoUrl, more: editingMore });
             setStatus(statusEl, 'Projet ajouté !', 'ok');
         }
         resetProjectForm();
@@ -759,9 +888,9 @@ async function loadMedia() {
         items.forEach(m => {
             const row = document.createElement('div');
             row.className = 'item-row';
-            const src = m.url || m.src || '';
+            const src = m.url || '';
             row.innerHTML = `
-                ${src ? `<img class="item-thumb" src="${src}" alt="">` : '<div class="item-thumb-placeholder">IMG</div>'}
+                ${src ? `<img class="item-thumb" src="${src}" alt="" loading="lazy">` : '<div class="item-thumb-placeholder">IMG</div>'}
                 <div class="item-info">
                     <div class="item-title">${m.name || '—'}</div>
                     <div class="item-meta">${m.date || ''} ${m.tools ? '· ' + m.tools : ''}</div>
@@ -832,10 +961,10 @@ async function loadClients() {
         items.forEach(c => {
             const card = document.createElement('div');
             card.className = 'client-card';
-            const logoSrc = c.logo_url || c.logo || '';
+            const logoSrc = c.logo_url || '';
             card.innerHTML = `
                 ${logoSrc
-                    ? `<img class="client-logo" src="${logoSrc}" alt="${c.name}">`
+                    ? `<img class="client-logo" src="${logoSrc}" alt="${c.name}" loading="lazy">`
                     : `<div style="height:36px;display:flex;align-items:center;font-size:.45rem;letter-spacing:2px;color:var(--muted);">LOGO</div>`
                 }
                 <div class="client-name">${c.name || '—'}</div>

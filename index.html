@@ -657,20 +657,7 @@
             <p>Directeur Artistique & Designer basé à Paris. Design graphique, motion 2D/3D, production audiovisuelle.</p>        </div>
         <div id="info-clients">
             <h3>CLIENTS</h3>
-            <div class="clients-grid">
-                <img src="https://assets.frantzimann.org/logo-clients/LOGO_JACQUAR.png" alt="Jacquart">
-                <img src="https://assets.frantzimann.org/logo-clients/LOGO-HIPPOPOTAMUS_BLANC.png" alt="Hippopotamus">
-                <img src="https://assets.frantzimann.org/logo-clients/LISSAC_logo_white.png" alt="Lissac">
-                <img src="https://assets.frantzimann.org/logo-clients/Jules_LogoSign_Blanc.png" alt="Jules">
-                <img src="https://assets.frantzimann.org/logo-clients/VDB_Logo_white.png" alt="Vins de Bordeaux">
-                <img src="https://assets.frantzimann.org/logo-clients/MARIE%20BRIZARD_LOGO.png" alt="Marie Brizard">
-                <img src="https://assets.frantzimann.org/logo-clients/OPI_Logo_Black.png" alt="OPI">
-                <img src="https://assets.frantzimann.org/logo-clients/Amora.svg.png" alt="Amora">
-                <img src="https://assets.frantzimann.org/logo-clients/maille-france-company-logo.png" alt="Maille">
-                <img src="https://assets.frantzimann.org/logo-clients/b%26j_logo.png" alt="Ben & Jerry's">
-                <img src="https://assets.frantzimann.org/logo-clients/as_logo.png" alt="AS">
-                <img src="https://assets.frantzimann.org/logo-clients/studio_56_logo.png" alt="Studio 56">
-            </div>
+            <div class="clients-grid" id="clients-grid-dynamic"></div>
         </div>
         <div id="info-meta">
             <a href="mailto:contact.frantz75@gmail.com">CONTACT.FRANTZ75@GMAIL.COM</a>
@@ -763,6 +750,24 @@
         }
     });
 })();
+/* ── CLIENTS dynamiques depuis API ── */
+(function(){
+    var grid = document.getElementById('clients-grid-dynamic');
+    if(!grid) return;
+    fetch('https://portfolio-api.francois-teule.workers.dev/clients')
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            if(!Array.isArray(data) || !data.length) return;
+            grid.innerHTML = '';
+            data.forEach(function(c){
+                var img = document.createElement('img');
+                img.src = c.logo_url; img.alt = c.name; img.loading = 'lazy';
+                grid.appendChild(img);
+            });
+        })
+        .catch(function(){});
+})();
+
 /* ── SOUND CONSENT HANDLER ── */
 (function(){
     var consent = document.getElementById('sound-consent');
@@ -1231,50 +1236,36 @@ if(isMobile) {
         mobileVideoList.appendChild(card);
     });
 
-    /* ── Section photo : galerie unique, 1 colonne ── */
-    var allMobilePhotos = [
-        { id:'gucci-flora', src:'https://assets.frantzimann.org/perfume/GUCCI/Gucci%20Flora%20Gorgeous%20Orchid.webp' },
-        { id:'hermes-1',    src:'https://assets.frantzimann.org/perfume/HERMES/hermes-1.webp' },
-        { id:'issey-v1',    src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey1.webp' },
-        { id:'issey-v1',    src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey2.webp' },
-        { id:'mfk-1',       src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis.webp' },
-        { id:'mfk-2',       src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis1.webp' },
-        { id:'valentino-1', src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino1.webp' },
-        { id:'valentino-2', src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino2.webp' },
-        { id:'creed-1',     src:'https://assets.frantzimann.org/perfume/CREED/creed-1.webp' },
-        { id:'creed-2',     src:'https://assets.frantzimann.org/perfume/CREED/creed-2.webp' },
-    ];
+    /* ── Section photo : galerie depuis API ── */
     var gridEl = document.getElementById('mobile-photo-grid');
-    allMobilePhotos.forEach(function(photo){
-        var meta = (typeof PHOTO_META !== 'undefined') ? PHOTO_META[photo.id] : null;
-
-        var wrap = document.createElement('div');
-        wrap.className = 'mobile-photo-wrap';
-
-        var img = document.createElement('img');
-        img.src = photo.src; img.className = 'mobile-photo-item'; img.loading = 'lazy';
-        wrap.appendChild(img);
-
-        if(meta) {
-            var info = document.createElement('div');
-            info.className = 'mobile-photo-info';
-            info.innerHTML =
-                '<div class="mobile-photo-info-name">' + meta.name + '</div>' +
-                '<div class="mobile-photo-info-meta">' + meta.date + ' &nbsp;·&nbsp; ' + meta.tools + '</div>';
-            wrap.appendChild(info);
-
-            wrap.addEventListener('click', function(){
-                var isActive = wrap.classList.contains('info-active');
-                /* ferme tous les autres */
-                gridEl.querySelectorAll('.mobile-photo-wrap.info-active').forEach(function(w){
-                    w.classList.remove('info-active');
+    function buildMobilePhotoGrid(photos) {
+        gridEl.innerHTML = '';
+        photos.forEach(function(photo){
+            var wrap = document.createElement('div');
+            wrap.className = 'mobile-photo-wrap';
+            var img = document.createElement('img');
+            img.src = photo.url || photo.src; img.className = 'mobile-photo-item'; img.loading = 'lazy';
+            wrap.appendChild(img);
+            if(photo.name) {
+                var info = document.createElement('div');
+                info.className = 'mobile-photo-info';
+                info.innerHTML =
+                    '<div class="mobile-photo-info-name">' + photo.name + '</div>' +
+                    '<div class="mobile-photo-info-meta">' + (photo.date||'') + (photo.tools ? ' &nbsp;·&nbsp; ' + photo.tools : '') + '</div>';
+                wrap.appendChild(info);
+                wrap.addEventListener('click', function(){
+                    var isActive = wrap.classList.contains('info-active');
+                    gridEl.querySelectorAll('.mobile-photo-wrap.info-active').forEach(function(w){ w.classList.remove('info-active'); });
+                    if(!isActive) wrap.classList.add('info-active');
                 });
-                if(!isActive) wrap.classList.add('info-active');
-            });
-        }
-
-        gridEl.appendChild(wrap);
-    });
+            }
+            gridEl.appendChild(wrap);
+        });
+    }
+    fetch('https://portfolio-api.francois-teule.workers.dev/media')
+        .then(function(r){ return r.json(); })
+        .then(function(data){ if(Array.isArray(data) && data.length) buildMobilePhotoGrid(data); })
+        .catch(function(){});
 
     /* Ferme l'info au scroll */
     var photoSection = document.getElementById('page-photo');
