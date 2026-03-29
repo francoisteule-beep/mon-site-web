@@ -34,6 +34,44 @@
     .loader-percent { font-size:.7rem; letter-spacing:3px; margin-top:20px; color:rgba(255,255,255,0.4); }
     .loader-label   { font-size:.65rem; letter-spacing:2px; margin-top:8px; color:rgba(255,255,255,0.2); min-height:16px; }
 
+    /* ── SOUND CONSENT ── */
+    #sound-consent {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: #050505; z-index: 10000;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        transition: opacity 0.8s ease, visibility 0.8s ease;
+    }
+    #sound-consent.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    #consent-bg-video {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        object-fit: cover; opacity: 0.18; pointer-events: none;
+    }
+    .consent-logo {
+        height: 150px; width: auto; margin-bottom: 30px;
+        opacity: 0; animation: fadeInLogo 0.8s ease forwards 0.3s;
+    }
+    .consent-question {
+        font-size: .52rem; letter-spacing: 3px; color: rgba(255,255,255,0.3);
+        text-transform: uppercase; margin-bottom: 44px;
+        opacity: 0; animation: fadeInLogo 0.8s ease forwards 0.65s;
+    }
+    .consent-btns {
+        display: flex; gap: 20px;
+        opacity: 0; animation: fadeInLogo 0.8s ease forwards 1s;
+    }
+    .consent-btn {
+        font-size: .52rem; letter-spacing: 3px; font-family: inherit;
+        text-transform: uppercase; cursor: pointer; background: none;
+        border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.45);
+        padding: 13px 30px; transition: border-color .25s, color .25s;
+    }
+    .consent-btn:hover { border-color: rgba(255,255,255,0.8); color: white; }
+    .consent-btn.primary { border-color: rgba(255,255,255,0.55); color: rgba(255,255,255,0.85); }
+    @media (max-width: 768px) {
+        .consent-sound-group { display: none !important; }
+        .consent-enter-group { display: flex !important; }
+    }
+
     /* ── SWIPE HINT ── */
     #swipe-hint {
         position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
@@ -330,6 +368,12 @@
         #photo-info-panel,
         #photo-category-label { display:none !important; }
 
+        /* ── Annule le overflow:hidden du desktop ── */
+        html, body {
+            overflow: auto !important;
+            height: auto !important;
+        }
+
         /* ── Header mobile ── */
         #site-header { padding:16px 20px; font-size:12px; align-items:center; }
 
@@ -419,28 +463,66 @@
             text-transform: uppercase;
         }
         .mobile-cat-btn.active { border-color: white; color: white; }
+        #mobile-photo-cats { display: none !important; }
         #mobile-photo-grid {
-            display: grid; grid-template-columns: repeat(2,1fr); gap: 8px;
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        .mobile-photo-wrap {
+            position: relative; overflow: hidden; border-radius: 2px;
         }
         .mobile-photo-item {
-            aspect-ratio: 2/3; object-fit: cover; width: 100%; display: block; border-radius: 2px;
+            aspect-ratio: 2/3; object-fit: cover; width: 100%; display: block;
+        }
+        .mobile-photo-info {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            padding: 28px 14px 14px;
+            background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
+            transform: translateY(100%);
+            transition: transform 0.35s ease;
+            pointer-events: none;
+        }
+        .mobile-photo-wrap.info-active .mobile-photo-info {
+            transform: translateY(0);
+        }
+        .mobile-photo-info-name {
+            font-size: .62rem; letter-spacing: 2px; color: #fff;
+            text-transform: uppercase; margin-bottom: 4px;
+        }
+        .mobile-photo-info-meta {
+            font-size: .5rem; letter-spacing: 1.5px; color: rgba(255,255,255,0.45);
+            text-transform: uppercase;
         }
 
         /* ── Info page mobile ── */
-        #page-info { display: flex !important; flex-direction: column !important; overflow-y: auto !important; }
-        #info-right { display: none; }
-        #info-left { padding: 80px 24px 40px !important; border-right: none !important; }
-        #info-bio p { font-size: 1.3rem !important; }
-        #info-meta { flex-direction: column; gap: 16px; }
-        .clients-grid img { width: 70px; height: 28px; }
+        #page-info { display: flex !important; flex-direction: column !important; }
+        #info-right { display: none !important; }
+        #info-left {
+            padding: 80px 24px 60px !important;
+            border-right: none !important;
+            gap: 40px;
+            display: flex; flex-direction: column;
+        }
+        #info-bio p { font-size: 1.15rem !important; line-height: 1.35 !important; }
+        #info-clients { margin-top: 0 !important; }
+        #info-clients h3 { margin-bottom: 20px; }
+        .clients-grid { gap: 16px 20px; }
+        .clients-grid img { width: 60px; height: 24px; }
+        #info-meta {
+            flex-direction: column; gap: 18px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(255,255,255,0.07);
+        }
+        #info-meta a { font-size: .6rem; letter-spacing: 3px; }
 
         /* ── Panneau projet mobile ── */
         #project-close-btn { top: 16px; left: 16px; }
         #project-controls { bottom: 24px; gap: 8px; }
         #project-controls button { padding: 8px 14px; font-size: .55rem; }
+        /* Cacher plein écran sur mobile */
+        #proj-fs-btn { display: none !important; }
 
-        /* ── Son ── */
-        #sound-toggle { right: 20px; bottom: 24px; }
+        /* ── Cacher son ambiant sur mobile ── */
+        #sound-toggle, #sound-hint { display: none !important; }
     }
 
     /* Desktop : cacher les éléments mobile */
@@ -464,6 +546,23 @@
     <source src="Static.wav" type="audio/wav">
 </audio>
 
+
+<div id="sound-consent">
+    <video id="consent-bg-video" autoplay muted loop playsinline>
+        <source src="https://assets.frantzimann.org/loader-screen.mp4" type="video/mp4">
+    </video>
+    <img class="consent-logo" src="https://assets.frantzimann.org/signature.svg" alt="FRANTZ" style="filter: brightness(0) invert(1);">
+    <div class="consent-question">Choisissez votre expérience</div>
+    <!-- Desktop : avec ou sans son -->
+    <div class="consent-btns consent-sound-group">
+        <button class="consent-btn primary" id="consent-sound-on">AVEC SON</button>
+        <button class="consent-btn" id="consent-sound-off">SANS SON</button>
+    </div>
+    <!-- Mobile : simple entrée -->
+    <div class="consent-btns consent-enter-group" style="display:none">
+        <button class="consent-btn primary" id="consent-enter">ENTRER</button>
+    </div>
+</div>
 
 <div id="loader">
     <div class="loader-logo">FRANTZ</div>
@@ -643,13 +742,16 @@
                 iconOn.style.display = 'block';
                 toggle.style.opacity = '1';
                 if(soundHint) soundHint.classList.remove('visible');
-            }).catch(e => console.log("Autoplay bloqué, attend un clic."));
+            }).catch(e => console.log("Autoplay bloqué."));
         }
     };
 
+    // Exposé pour le consentement
+    window.startAmbient = startAudio;
+
     // Activer au clic sur le bouton Toggle
     toggle.addEventListener('click', (e) => {
-        e.stopPropagation(); // Empêche les autres clics
+        e.stopPropagation();
         if(isPlaying){
             audio.pause();
             iconOff.style.display = 'block';
@@ -660,12 +762,33 @@
             startAudio();
         }
     });
-
-    // LA RUSE : Activer le son dès le premier clic n'importe où sur le document
-    // Idéalement, l'utilisateur clique sur le loader ou pour naviguer, ce qui débloque l'audio.
-    document.addEventListener('click', startAudio, { once: true });
-    document.addEventListener('touchstart', startAudio, { once: true });
 })();
+/* ── SOUND CONSENT HANDLER ── */
+(function(){
+    var consent = document.getElementById('sound-consent');
+    var isMob   = window.innerWidth <= 768;
+
+    function dismiss(withSound) {
+        window._soundChoice = withSound ? 'on' : 'off';
+        consent.classList.add('hidden');
+        if(withSound && window.startAmbient) window.startAmbient();
+    }
+
+    if(isMob) {
+        var g = consent.querySelector('.consent-sound-group');
+        var ge = consent.querySelector('.consent-enter-group');
+        if(g)  g.style.display  = 'none';
+        if(ge) ge.style.display = 'flex';
+        var btnEnter = document.getElementById('consent-enter');
+        if(btnEnter) btnEnter.addEventListener('click', function(){ dismiss(false); });
+    } else {
+        var btnOn  = document.getElementById('consent-sound-on');
+        var btnOff = document.getElementById('consent-sound-off');
+        if(btnOn)  btnOn.addEventListener('click',  function(){ dismiss(true);  });
+        if(btnOff) btnOff.addEventListener('click', function(){ dismiss(false); });
+    }
+})();
+
 /* ── CLOCK ── */
 (function(){
     function u(){ var c=document.getElementById('clock'); if(c) c.innerText=new Date().toLocaleTimeString('en-GB',{timeZone:'UTC',hour12:false})+' (GMT)'; }
@@ -977,7 +1100,7 @@ const PROJECTS = [
     },
     {
         title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project_1.mp4',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project.mp4',
         more: []
     },
     {
@@ -1014,6 +1137,10 @@ if(isMobile) {
     /* ── Désactive le loader Three.js (pas de scène 3D) ── */
     document.getElementById('loader').classList.add('hidden');
 
+    /* ── Désactive le son ambiant sur mobile ── */
+    var _bgAudio = document.getElementById('bg-static-audio');
+    if(_bgAudio) { _bgAudio.pause(); _bgAudio.volume = 0; }
+
     /* ── Burger / Drawer ── */
     var burgerBtn   = document.getElementById('burger-btn');
     var drawerEl    = document.getElementById('mobile-drawer');
@@ -1041,6 +1168,7 @@ if(isMobile) {
         if(mobSections[page]) mobSections[page].classList.add('mob-active');
         if(mobNavBtns[page])  mobNavBtns[page].classList.add('active');
         closeDrawer();
+        window.scrollTo({ top: 0, behavior: 'instant' });
         if(page === 'info' && window.startInfoCube)  window.startInfoCube();
         if(page !== 'info' && window.stopInfoCube)   window.stopInfoCube();
     }
@@ -1081,46 +1209,60 @@ if(isMobile) {
         mobileVideoList.appendChild(card);
     });
 
-    /* ── Section photo : galerie par catégorie ── */
-    var mobilePhotoData = [
-        { cat:'IA — PARFUMS', photos:[
-            { src:'https://assets.frantzimann.org/perfume/GUCCI/Gucci%20Flora%20Gorgeous%20Orchid.webp' },
-            { src:'https://assets.frantzimann.org/perfume/HERMES/hermes-1.webp' },
-            { src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey1.webp' },
-            { src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey2.webp' },
-            { src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis.webp' },
-            { src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis1.webp' },
-            { src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino1.webp' },
-            { src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino2.webp' },
-            { src:'https://assets.frantzimann.org/perfume/CREED/creed-1.webp' },
-            { src:'https://assets.frantzimann.org/perfume/CREED/creed-2.webp' },
-        ]},
-        { cat:'CAPTURES', photos:[] }
+    /* ── Section photo : galerie unique, 1 colonne ── */
+    var allMobilePhotos = [
+        { id:'gucci-flora', src:'https://assets.frantzimann.org/perfume/GUCCI/Gucci%20Flora%20Gorgeous%20Orchid.webp' },
+        { id:'hermes-1',    src:'https://assets.frantzimann.org/perfume/HERMES/hermes-1.webp' },
+        { id:'issey-v1',    src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey1.webp' },
+        { id:'issey-v1',    src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey2.webp' },
+        { id:'mfk-1',       src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis.webp' },
+        { id:'mfk-2',       src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis1.webp' },
+        { id:'valentino-1', src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino1.webp' },
+        { id:'valentino-2', src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino2.webp' },
+        { id:'creed-1',     src:'https://assets.frantzimann.org/perfume/CREED/creed-1.webp' },
+        { id:'creed-2',     src:'https://assets.frantzimann.org/perfume/CREED/creed-2.webp' },
     ];
-
-    var catsEl = document.getElementById('mobile-photo-cats');
     var gridEl = document.getElementById('mobile-photo-grid');
+    allMobilePhotos.forEach(function(photo){
+        var meta = (typeof PHOTO_META !== 'undefined') ? PHOTO_META[photo.id] : null;
 
-    function showMobileCat(idx) {
-        gridEl.innerHTML = '';
-        mobilePhotoData[idx].photos.forEach(function(p){
-            var img = document.createElement('img');
-            img.src = p.src; img.className = 'mobile-photo-item'; img.loading = 'lazy';
-            gridEl.appendChild(img);
-        });
-        catsEl.querySelectorAll('.mobile-cat-btn').forEach(function(b,i){
-            b.classList.toggle('active', i === idx);
-        });
-    }
+        var wrap = document.createElement('div');
+        wrap.className = 'mobile-photo-wrap';
 
-    mobilePhotoData.forEach(function(cat, idx){
-        var btn = document.createElement('button');
-        btn.className = 'mobile-cat-btn' + (idx === 0 ? ' active' : '');
-        btn.textContent = cat.cat;
-        btn.addEventListener('click', function(){ showMobileCat(idx); });
-        catsEl.appendChild(btn);
+        var img = document.createElement('img');
+        img.src = photo.src; img.className = 'mobile-photo-item'; img.loading = 'lazy';
+        wrap.appendChild(img);
+
+        if(meta) {
+            var info = document.createElement('div');
+            info.className = 'mobile-photo-info';
+            info.innerHTML =
+                '<div class="mobile-photo-info-name">' + meta.name + '</div>' +
+                '<div class="mobile-photo-info-meta">' + meta.date + ' &nbsp;·&nbsp; ' + meta.tools + '</div>';
+            wrap.appendChild(info);
+
+            wrap.addEventListener('click', function(){
+                var isActive = wrap.classList.contains('info-active');
+                /* ferme tous les autres */
+                gridEl.querySelectorAll('.mobile-photo-wrap.info-active').forEach(function(w){
+                    w.classList.remove('info-active');
+                });
+                if(!isActive) wrap.classList.add('info-active');
+            });
+        }
+
+        gridEl.appendChild(wrap);
     });
-    showMobileCat(0);
+
+    /* Ferme l'info au scroll */
+    var photoSection = document.getElementById('page-photo');
+    if(photoSection) {
+        photoSection.addEventListener('scroll', function(){
+            gridEl.querySelectorAll('.mobile-photo-wrap.info-active').forEach(function(w){
+                w.classList.remove('info-active');
+            });
+        }, { passive: true });
+    }
 
     /* ── Page de départ ── */
     switchMobilePage('video');
@@ -1220,7 +1362,7 @@ if(isMobile) {
     if(btnProj) btnProj.addEventListener('click', function(){
         btnProj.classList.remove('visible');
         document.getElementById('project-preview').classList.remove('visible');
-        window.openProject(currentActiveIndex);
+        window.openProject(window.currentActiveIndex || 0);
     });
 })();
 </script>
@@ -1354,7 +1496,7 @@ function doSnap(){
     isTouching=false; 
     const s=Math.round(scrollTarget/anglePerTV); 
     scrollTarget=s*anglePerTV; 
-    currentActiveIndex=((s%tvCount)+tvCount)%tvCount; 
+    currentActiveIndex=((s%tvCount)+tvCount)%tvCount; window.currentActiveIndex=currentActiveIndex;
     
     const name = projectNames[currentActiveIndex];
     projectPreview.innerText=name; 
@@ -1402,7 +1544,7 @@ setProgress(10,'CHARGEMENT VIDÉOS');
 /* Créer les <video> et textures Three.js dynamiquement depuis PROJECTS */
 const projectVideos = PROJECTS.map(function(proj) {
     const v = document.createElement('video');
-    v.crossOrigin = 'anonymous';
+    if(!proj.noCors) v.crossOrigin = 'anonymous';
     v.setAttribute('playsinline', '');
     v.muted = true; v.loop = true; v.style.display = 'none';
     const s = document.createElement('source');
@@ -1411,7 +1553,20 @@ const projectVideos = PROJECTS.map(function(proj) {
     document.body.appendChild(v);
     return v;
 });
-const projectTextures = projectVideos.map(function(v) {
+/* Texture noire de substitution pour les projets sans CORS */
+const _blackTex = (function(){
+    const c = document.createElement('canvas'); c.width = 2; c.height = 2;
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace; t.flipY = true;
+    return t;
+})();
+
+const projectTextures = PROJECTS.map(function(proj, i) {
+    const v = projectVideos[i];
+    if(proj.noCors) {
+        onVideoReady(); /* compte quand même dans le loader */
+        return _blackTex;
+    }
     const tex = new THREE.VideoTexture(v);
     tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = true;
     v.addEventListener('canplay', onVideoReady, {once:true});
