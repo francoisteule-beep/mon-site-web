@@ -153,6 +153,17 @@ export default {
                 }
             }
 
+            // PUT /media/:id
+            if (path.match(/^\/media\/\d+$/) && method === "PUT") {
+                const id = path.split("/")[2];
+                const { name, date, tools, url } = await request.json();
+                await env.portfolio_db
+                    .prepare("UPDATE media SET name=?, date=?, tools=?, url=? WHERE id=?")
+                    .bind(name, date || "", tools || "", url, id)
+                    .run();
+                return json({ success: true });
+            }
+
             // DELETE /media/:id
             if (path.match(/^\/media\/\d+$/) && method === "DELETE") {
                 const id = path.split("/")[2];

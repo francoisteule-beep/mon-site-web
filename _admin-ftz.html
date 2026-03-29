@@ -441,7 +441,10 @@ body {
                 <span class="section-count" id="media-count"></span>
             </div>
 
-            <div class="add-form">
+            <div class="add-form" id="form-media">
+                <div class="form-group full">
+                    <span class="form-label" id="media-form-title">NOUVELLE PHOTO</span>
+                </div>
                 <div class="form-group">
                     <label class="form-label">Nom</label>
                     <input class="form-input" id="media-name" type="text" placeholder="Gucci Flora Gorgeous Orchid">
@@ -467,6 +470,7 @@ body {
                 </div>
                 <div class="form-actions">
                     <button class="btn-primary" id="btn-add-media">AJOUTER LA PHOTO</button>
+                    <button class="btn-icon" id="btn-cancel-media" style="display:none">ANNULER</button>
                     <span class="form-status" id="media-status-msg"></span>
                 </div>
             </div>
@@ -896,19 +900,51 @@ async function loadMedia() {
                     <div class="item-meta">${m.date || ''} ${m.tools ? '· ' + m.tools : ''}</div>
                 </div>
                 <div class="item-actions">
-                    <button class="btn-icon danger" data-id="${m.id}">SUPPRIMER</button>
+                    <button class="btn-icon edit-media-btn">ÉDITER</button>
+                    <button class="btn-icon danger">SUPPRIMER</button>
                 </div>`;
             row.querySelector('.btn-icon.danger').addEventListener('click', async () => {
                 if (!confirm('Supprimer cette photo ?')) return;
                 await api('DELETE', '/media/' + m.id);
                 loadMedia();
             });
+            row.querySelector('.edit-media-btn').addEventListener('click', () => startEditMedia(m));
             list.appendChild(row);
         });
     } catch(e) {
         list.innerHTML = '<div class="empty-state">Erreur de chargement</div>';
     }
 }
+
+// ── État édition photo ─────────────────────────────────────
+let editingMediaId = null;
+
+function startEditMedia(m) {
+    editingMediaId = m.id;
+    document.getElementById('media-form-title').textContent = 'MODIFIER — ' + m.name;
+    document.getElementById('media-name').value    = m.name  || '';
+    document.getElementById('media-date').value    = m.date  || '';
+    document.getElementById('media-tools').value   = m.tools || '';
+    document.getElementById('media-img-url').value = m.url   || '';
+    document.getElementById('btn-add-media').textContent = 'METTRE À JOUR';
+    document.getElementById('btn-cancel-media').style.display = 'inline-block';
+    document.getElementById('form-media').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function resetMediaForm() {
+    editingMediaId = null;
+    document.getElementById('media-form-title').textContent   = 'NOUVELLE PHOTO';
+    document.getElementById('btn-add-media').textContent      = 'AJOUTER LA PHOTO';
+    document.getElementById('btn-cancel-media').style.display = 'none';
+    ['media-name','media-date','media-tools','media-img-url'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    document.getElementById('media-img-file').value = '';
+    document.getElementById('media-file-label').textContent = 'Glisser ou cliquer (.jpg, .webp, .png)';
+    document.getElementById('media-file-label').classList.remove('file-chosen');
+}
+
+document.getElementById('btn-cancel-media').addEventListener('click', resetMediaForm);
 
 document.getElementById('btn-add-media').addEventListener('click', async () => {
     const name     = document.getElementById('media-name').value.trim();
@@ -919,7 +955,7 @@ document.getElementById('btn-add-media').addEventListener('click', async () => {
     const statusEl = document.getElementById('media-status-msg');
 
     if (!name) return setStatus(statusEl, 'Nom requis', 'err');
-    if (!file && !imgUrl) return setStatus(statusEl, 'Fichier ou URL requis', 'err');
+    if (!editingMediaId && !file && !imgUrl) return setStatus(statusEl, 'Fichier ou URL requis', 'err');
 
     const btn = document.getElementById('btn-add-media');
     btn.disabled = true;
@@ -927,14 +963,14 @@ document.getElementById('btn-add-media').addEventListener('click', async () => {
 
     try {
         if (file) imgUrl = await uploadFile(file, 'photos', null);
-        await api('POST', '/media', { name, date, tools, url: imgUrl });
-        setStatus(statusEl, 'Photo ajoutée !', 'ok');
-        ['media-name','media-date','media-tools','media-img-url'].forEach(id => {
-            document.getElementById(id).value = '';
-        });
-        document.getElementById('media-img-file').value = '';
-        document.getElementById('media-file-label').textContent = 'Glisser ou cliquer (.jpg, .webp, .png)';
-        document.getElementById('media-file-label').classList.remove('file-chosen');
+        if (editingMediaId) {
+            await api('PUT', '/media/' + editingMediaId, { name, date, tools, url: imgUrl });
+            setStatus(statusEl, 'Photo mise à jour !', 'ok');
+        } else {
+            await api('POST', '/media', { name, date, tools, url: imgUrl });
+            setStatus(statusEl, 'Photo ajoutée !', 'ok');
+        }
+        resetMediaForm();
         loadMedia();
     } catch(e) {
         setStatus(statusEl, e.message, 'err');
@@ -1015,6 +1051,7 @@ document.getElementById('btn-add-client').addEventListener('click', async () => 
 //  INIT
 // ══════════════════════════════════════════════
 function loadAll() {
+    renderMoreList();
     loadProjects();
     loadMedia();
     loadClients();
