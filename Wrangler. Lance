@@ -1,0 +1,13 @@
+cat > wrangler.toml << 'EOF'
+name = "portfolio-api"
+compatibility_date = "2026-01-01"
+
+[[d1_databases]]
+binding = "portfolio_db"
+database_name = "portfolio-db"
+database_id = "8f3e5ce4-a70a-4db4-8275-f867e3d2b0ca"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "video-portfolio"
+EOF
