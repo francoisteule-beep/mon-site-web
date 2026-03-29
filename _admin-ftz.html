@@ -420,7 +420,14 @@ body {
                             <option value="video">Vidéo</option>
                             <option value="img">Image</option>
                         </select>
-                        <button class="btn-small" id="btn-add-more">+ AJOUTER</button>
+                        <button class="btn-small" id="btn-add-more">+ URL</button>
+                    </div>
+                    <div class="form-file-area" id="more-upload-area" style="margin-top:8px">
+                        <div class="form-file-label" id="more-file-label">Ou glisser / cliquer un fichier (.mp4, .jpg, .webp, .png)</div>
+                        <input type="file" id="proj-more-file" accept="video/mp4,image/*">
+                        <div class="upload-progress" id="more-upload-progress">
+                            <div class="upload-progress-bar" id="more-upload-bar"></div>
+                        </div>
                     </div>
                 </div>
                 <div class="form-actions">
@@ -807,6 +814,35 @@ document.getElementById('btn-add-more').addEventListener('click', () => {
     renderMoreList();
 });
 
+document.getElementById('proj-more-file').addEventListener('change', async function () {
+    const file = this.files[0];
+    if (!file) return;
+    const label    = document.getElementById('more-file-label');
+    const bar      = document.getElementById('more-upload-bar');
+    const progress = document.getElementById('more-upload-progress');
+    label.textContent = 'Upload en cours…';
+    progress.style.display = 'block';
+    const folder = file.type.startsWith('video') ? 'coulisses/videos' : 'coulisses/images';
+    const type   = file.type.startsWith('video') ? 'video' : 'img';
+    try {
+        const url = await uploadFile(file, folder, bar);
+        editingMore.push({ type, src: url });
+        renderMoreList();
+        label.textContent = '✓ ' + file.name + ' ajouté';
+        label.classList.add('file-chosen');
+        this.value = '';
+        setTimeout(() => {
+            label.textContent = 'Ou glisser / cliquer un fichier (.mp4, .jpg, .webp, .png)';
+            label.classList.remove('file-chosen');
+            progress.style.display = 'none';
+            bar.style.width = '0%';
+        }, 2500);
+    } catch(e) {
+        label.textContent = 'Erreur : ' + e.message;
+        progress.style.display = 'none';
+    }
+});
+
 // ── État édition ──────────────────────────────────────────────
 let editingProjectId = null;
 
@@ -844,7 +880,6 @@ document.getElementById('btn-add-project').addEventListener('click', async () =>
     const status   = document.getElementById('proj-status').value;
     const file     = document.getElementById('proj-video-file').files[0];
     let   videoUrl = document.getElementById('proj-video-url').value.trim();
-    const more     = document.getElementById('proj-more').value.trim();
     const statusEl = document.getElementById('proj-status-msg');
 
     if (!title) return setStatus(statusEl, 'Titre requis', 'err');
