@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FRANTZ — Admin</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --bg:       #0a0a0a;
+    --surface:  #111111;
+    --border:   rgba(255,255,255,0.08);
+    --border2:  rgba(255,255,255,0.15);
+    --text:     rgba(255,255,255,0.85);
+    --muted:    rgba(255,255,255,0.3);
+    --accent:   #ffffff;
+    --danger:   #ff4444;
+    --success:  #44cc88;
+    --sidebar:  220px;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* ── LOGIN ── */
+#login-screen {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: var(--bg); z-index: 999;
+    transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+#login-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+.login-logo {
+    height: 40px; width: auto; margin-bottom: 64px;
+    filter: brightness(0) invert(1);
+}
+.login-form {
+    display: flex; flex-direction: column; gap: 14px; width: 300px;
+}
+.login-form input {
+    background: none; border: 1px solid var(--border2);
+    color: var(--text); font-family: inherit;
+    font-size: .6rem; letter-spacing: 2px;
+    padding: 13px 16px; outline: none;
+    transition: border-color .2s;
+}
+.login-form input::placeholder { color: var(--muted); }
+.login-form input:focus { border-color: var(--accent); }
+.login-form button {
+    background: none; border: 1px solid var(--accent);
+    color: var(--accent); font-family: inherit;
+    font-size: .58rem; letter-spacing: 3px;
+    text-transform: uppercase; padding: 13px;
+    cursor: pointer; transition: background .2s, color .2s;
+    margin-top: 8px;
+}
+.login-form button:hover { background: var(--accent); color: #000; }
+#login-error {
+    font-size: .52rem; letter-spacing: 2px; color: var(--danger);
+    text-align: center; min-height: 20px; margin-top: 8px;
+}
+
+/* ── APP SHELL ── */
+#app {
+    display: flex; height: 100vh;
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+#app.visible { opacity: 1; visibility: visible; }
+
+/* ── SIDEBAR ── */
+#sidebar {
+    width: var(--sidebar); flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 32px 0;
+}
+.sidebar-logo {
+    height: 28px; width: auto; margin: 0 24px 40px;
+    filter: brightness(0) invert(1); opacity: 0.7;
+}
+.sidebar-label {
+    font-size: .42rem; letter-spacing: 3px; color: var(--muted);
+    padding: 0 24px; margin-bottom: 10px;
+    text-transform: uppercase;
+}
+.nav-item {
+    font-size: .55rem; letter-spacing: 2px; text-transform: uppercase;
+    padding: 12px 24px; cursor: pointer; color: var(--muted);
+    transition: color .2s, background .2s;
+    border-left: 2px solid transparent;
+}
+.nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+.nav-item.active { color: var(--accent); border-left-color: var(--accent); }
+
+.sidebar-bottom {
+    margin-top: auto; padding: 0 24px;
+    border-top: 1px solid var(--border); padding-top: 20px;
+}
+#btn-logout {
+    font-size: .5rem; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--muted); background: none; border: none;
+    font-family: inherit; cursor: pointer; transition: color .2s;
+}
+#btn-logout:hover { color: var(--danger); }
+
+/* ── MAIN ── */
+#main {
+    flex: 1; overflow-y: auto;
+    padding: 40px 48px;
+}
+
+/* ── SECTION ── */
+.section { display: none; }
+.section.active { display: block; }
+
+.section-header {
+    display: flex; align-items: baseline;
+    justify-content: space-between; margin-bottom: 40px;
+    border-bottom: 1px solid var(--border); padding-bottom: 20px;
+}
+.section-title {
+    font-size: .9rem; letter-spacing: 4px; text-transform: uppercase;
+}
+.section-count { font-size: .5rem; letter-spacing: 2px; color: var(--muted); }
+
+/* ── ADD FORM ── */
+.add-form {
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 28px; margin-bottom: 40px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+.add-form.single-col { grid-template-columns: 1fr; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-label {
+    font-size: .45rem; letter-spacing: 2px; color: var(--muted);
+    text-transform: uppercase;
+}
+.form-input, .form-select, .form-textarea {
+    background: var(--bg); border: 1px solid var(--border2);
+    color: var(--text); font-family: inherit; font-size: .6rem;
+    padding: 10px 14px; outline: none; transition: border-color .2s;
+}
+.form-textarea { resize: vertical; min-height: 80px; }
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--accent);
+}
+.form-select option { background: #111; }
+.form-file-area {
+    border: 1px dashed var(--border2); padding: 20px;
+    text-align: center; cursor: pointer;
+    transition: border-color .2s; position: relative;
+}
+.form-file-area:hover { border-color: var(--accent); }
+.form-file-area input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+}
+.form-file-label {
+    font-size: .5rem; letter-spacing: 2px; color: var(--muted);
+    text-transform: uppercase;
+}
+.file-chosen { color: var(--success); }
+.upload-progress {
+    height: 2px; background: var(--border);
+    margin-top: 8px; overflow: hidden; display: none;
+}
+.upload-progress-bar {
+    height: 100%; background: var(--accent); width: 0%;
+    transition: width 0.3s ease;
+}
+.form-actions { grid-column: 1 / -1; display: flex; gap: 12px; align-items: center; }
+.btn-primary {
+    font-family: inherit; font-size: .55rem; letter-spacing: 2px;
+    text-transform: uppercase; cursor: pointer;
+    background: none; border: 1px solid var(--accent);
+    color: var(--accent); padding: 10px 24px;
+    transition: background .2s, color .2s;
+}
+.btn-primary:hover { background: var(--accent); color: #000; }
+.btn-primary:disabled { opacity: 0.4; pointer-events: none; }
+.form-status {
+    font-size: .5rem; letter-spacing: 2px; min-height: 16px;
+}
+.status-ok  { color: var(--success); }
+.status-err { color: var(--danger); }
+
+/* ── ITEMS LIST ── */
+.items-grid { display: flex; flex-direction: column; gap: 2px; }
+.item-row {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 16px 20px;
+    transition: border-color .2s;
+}
+.item-row:hover { border-color: var(--border2); }
+.item-thumb {
+    width: 56px; height: 40px; object-fit: cover;
+    flex-shrink: 0; background: #1a1a1a;
+}
+.item-thumb-placeholder {
+    width: 56px; height: 40px; flex-shrink: 0;
+    background: #1a1a1a; display: flex; align-items: center;
+    justify-content: center; font-size: .4rem; color: var(--muted);
+    letter-spacing: 1px;
+}
+.item-info { flex: 1; min-width: 0; }
+.item-title {
+    font-size: .6rem; letter-spacing: 2px; text-transform: uppercase;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.item-meta {
+    font-size: .48rem; letter-spacing: 1.5px; color: var(--muted);
+    margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.item-badge {
+    font-size: .42rem; letter-spacing: 2px; text-transform: uppercase;
+    padding: 3px 10px; border: 1px solid var(--border2); color: var(--muted);
+    flex-shrink: 0;
+}
+.item-badge.soon { border-color: rgba(255,200,0,0.3); color: rgba(255,200,0,0.6); }
+.item-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.btn-icon {
+    font-family: inherit; font-size: .45rem; letter-spacing: 2px;
+    text-transform: uppercase; cursor: pointer; background: none;
+    border: 1px solid var(--border); color: var(--muted);
+    padding: 5px 12px; transition: border-color .2s, color .2s;
+}
+.btn-icon:hover { border-color: var(--border2); color: var(--text); }
+.btn-icon.danger:hover { border-color: var(--danger); color: var(--danger); }
+.drag-handle {
+    cursor: grab; padding: 0 10px; color: var(--muted);
+    font-size: .8rem; user-select: none; flex-shrink: 0;
+}
+.drag-handle:active { cursor: grabbing; }
+.item-row.dragging { opacity: 0.4; border-style: dashed; }
+.item-row.drag-over { border-color: rgba(255,255,255,0.5); }
+
+.empty-state {
+    padding: 60px; text-align: center;
+    font-size: .52rem; letter-spacing: 2px; color: var(--muted);
+    text-transform: uppercase; border: 1px dashed var(--border);
+}
+
+/* ── CLIENTS GRID ── */
+.clients-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+}
+.client-card {
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 20px; display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+    transition: border-color .2s;
+}
+.client-card:hover { border-color: var(--border2); }
+.client-logo {
+    height: 36px; max-width: 100%; object-fit: contain;
+    filter: brightness(0) invert(1); opacity: 0.6;
+}
+.client-name {
+    font-size: .45rem; letter-spacing: 2px; color: var(--muted);
+    text-transform: uppercase; text-align: center;
+}
+.client-del {
+    font-size: .4rem; letter-spacing: 1px; text-transform: uppercase;
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; font-family: inherit; transition: color .2s;
+}
+.client-del:hover { color: var(--danger); }
+
+/* ── LOADER INLINE ── */
+.spin {
+    display: inline-block; width: 12px; height: 12px;
+    border: 1px solid var(--border2); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .7s linear infinite;
+    vertical-align: middle; margin-right: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── SCROLLBAR ── */
+#main::-webkit-scrollbar { width: 4px; }
+#main::-webkit-scrollbar-track { background: transparent; }
+#main::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div id="login-screen">
+    <img class="login-logo" src="https://assets.frantzimann.org/signature.svg" alt="FRANTZ">
+    <form class="login-form" id="login-form" autocomplete="off">
+        <input type="text"     id="login-user" placeholder="IDENTIFIANT"  autocomplete="username">
+        <input type="password" id="login-pass" placeholder="MOT DE PASSE" autocomplete="current-password">
+        <button type="submit">ACCÉDER</button>
+        <div id="login-error"></div>
+    </form>
+</div>
+
+<!-- ══════════════ APP ══════════════ -->
+<div id="app">
+
+    <!-- Sidebar -->
+    <nav id="sidebar">
+        <img class="sidebar-logo" src="https://assets.frantzimann.org/signature.svg" alt="FRANTZ">
+        <div class="sidebar-label">Contenu</div>
+        <div class="nav-item active" data-section="projects">Projets vidéo</div>
+        <div class="nav-item" data-section="media">Photos</div>
+        <div class="nav-item" data-section="clients">Clients</div>
+        <div class="sidebar-bottom">
+            <button id="btn-logout">Déconnexion</button>
+        </div>
+    </nav>
+
+    <!-- Main -->
+    <main id="main">
+
+        <!-- ── PROJETS ── -->
+        <div id="section-projects" class="section active">
+            <div class="section-header">
+                <span class="section-title">Projets vidéo</span>
+                <span class="section-count" id="projects-count"></span>
+            </div>
+
+            <!-- Form -->
+            <div class="add-form" id="form-projects">
+                <div class="form-group full">
+                    <span class="form-label" id="proj-form-title">NOUVEAU PROJET</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Titre du projet</label>
+                    <input class="form-input" id="proj-title" type="text" placeholder="BOILER ROOM">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Statut</label>
+                    <select class="form-select" id="proj-status">
+                        <option value="published">Publié</option>
+                        <option value="coming_soon">Coming Soon</option>
+                    </select>
+                </div>
+                <div class="form-group full">
+                    <label class="form-label">Fichier vidéo (upload vers R2)</label>
+                    <div class="form-file-area" id="proj-file-area">
+                        <div class="form-file-label" id="proj-file-label">Glisser ou cliquer pour choisir une vidéo (.mp4)</div>
+                        <input type="file" id="proj-video-file" accept="video/mp4,video/*">
+                        <div class="upload-progress" id="proj-upload-progress">
+                            <div class="upload-progress-bar" id="proj-upload-bar"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group full">
+                    <label class="form-label">— ou — URL vidéo existante</label>
+                    <input class="form-input" id="proj-video-url" type="url" placeholder="https://...">
+                </div>
+                <div class="form-group full">
+                    <label class="form-label">Médias "En coulisses" (URLs séparées par des virgules)</label>
+                    <textarea class="form-textarea" id="proj-more" placeholder="https://url1.jpg, https://url2.jpg"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button class="btn-primary" id="btn-add-project">AJOUTER LE PROJET</button>
+                    <button class="btn-icon" id="btn-cancel-edit" style="display:none">ANNULER</button>
+                    <span class="form-status" id="proj-status-msg"></span>
+                </div>
+            </div>
+
+            <!-- List -->
+            <div class="items-grid" id="projects-list"></div>
+        </div>
+
+        <!-- ── PHOTOS ── -->
+        <div id="section-media" class="section">
+            <div class="section-header">
+                <span class="section-title">Photos</span>
+                <span class="section-count" id="media-count"></span>
+            </div>
+
+            <div class="add-form">
+                <div class="form-group">
+                    <label class="form-label">Nom</label>
+                    <input class="form-input" id="media-name" type="text" placeholder="Gucci Flora Gorgeous Orchid">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input class="form-input" id="media-date" type="text" placeholder="Fév. 2026">
+                </div>
+                <div class="form-group full">
+                    <label class="form-label">Outils / Technique</label>
+                    <input class="form-input" id="media-tools" type="text" placeholder="Midjourney · Magnific AI">
+                </div>
+                <div class="form-group full">
+                    <label class="form-label">Fichier image (upload vers R2)</label>
+                    <div class="form-file-area">
+                        <div class="form-file-label" id="media-file-label">Glisser ou cliquer (.jpg, .webp, .png)</div>
+                        <input type="file" id="media-img-file" accept="image/*">
+                    </div>
+                </div>
+                <div class="form-group full">
+                    <label class="form-label">— ou — URL image existante</label>
+                    <input class="form-input" id="media-img-url" type="url" placeholder="https://...">
+                </div>
+                <div class="form-actions">
+                    <button class="btn-primary" id="btn-add-media">AJOUTER LA PHOTO</button>
+                    <span class="form-status" id="media-status-msg"></span>
+                </div>
+            </div>
+
+            <div class="items-grid" id="media-list"></div>
+        </div>
+
+        <!-- ── CLIENTS ── -->
+        <div id="section-clients" class="section">
+            <div class="section-header">
+                <span class="section-title">Clients</span>
+                <span class="section-count" id="clients-count"></span>
+            </div>
+
+            <div class="add-form single-col">
+                <div class="form-group">
+                    <label class="form-label">Nom du client</label>
+                    <input class="form-input" id="client-name" type="text" placeholder="ADIDAS">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Logo (upload vers R2)</label>
+                    <div class="form-file-area">
+                        <div class="form-file-label" id="client-file-label">Glisser ou cliquer (SVG, PNG, WebP)</div>
+                        <input type="file" id="client-logo-file" accept="image/*,.svg">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">— ou — URL logo existante</label>
+                    <input class="form-input" id="client-logo-url" type="url" placeholder="https://...">
+                </div>
+                <div class="form-actions">
+                    <button class="btn-primary" id="btn-add-client">AJOUTER LE CLIENT</button>
+                    <span class="form-status" id="client-status-msg"></span>
+                </div>
+            </div>
+
+            <div class="clients-grid" id="clients-list"></div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════
+const API = 'https://portfolio-api.francois-teule.workers.dev';
+let TOKEN = localStorage.getItem('admin_token') || '';
+
+// ══════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════
+function authHeaders(extra = {}) {
+    return { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json', ...extra };
+}
+
+async function api(method, path, body) {
+    const opts = { method, headers: authHeaders() };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(API + path, opts);
+    if (res.status === 401) { logout(); throw new Error('Non autorisé'); }
+    return res.json();
+}
+
+function setStatus(el, msg, type = 'ok') {
+    el.textContent = msg;
+    el.className = 'form-status status-' + type;
+    if (msg) setTimeout(() => { el.textContent = ''; }, 4000);
+}
+
+// ══════════════════════════════════════════════
+//  UPLOAD vers R2 via Worker
+// ══════════════════════════════════════════════
+async function uploadFile(file, folder, progressBar) {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', folder);
+
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', API + '/upload');
+        xhr.setRequestHeader('Authorization', 'Bearer ' + TOKEN);
+
+        if (progressBar) {
+            const wrap = progressBar.parentElement;
+            wrap.style.display = 'block';
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable)
+                    progressBar.style.width = (e.loaded / e.total * 100) + '%';
+            };
+        }
+
+        xhr.onload = () => {
+            if (progressBar) progressBar.parentElement.style.display = 'none';
+            if (xhr.status >= 200 && xhr.status < 300) {
+                const data = JSON.parse(xhr.responseText);
+                resolve(data.url);
+            } else {
+                reject(new Error('Upload échoué (' + xhr.status + ')'));
+            }
+        };
+        xhr.onerror = () => reject(new Error('Erreur réseau'));
+        xhr.send(fd);
+    });
+}
+
+// ══════════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════════
+const loginScreen = document.getElementById('login-screen');
+const appEl       = document.getElementById('app');
+const loginForm   = document.getElementById('login-form');
+const loginError  = document.getElementById('login-error');
+
+loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginError.textContent = '';
+    const user = document.getElementById('login-user').value.trim();
+    const pass = document.getElementById('login-pass').value;
+    try {
+        const res = await fetch(API + '/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.token) throw new Error(data.error || 'Identifiants invalides');
+        TOKEN = data.token;
+        localStorage.setItem('admin_token', TOKEN);
+        showApp();
+    } catch(err) {
+        loginError.textContent = err.message.toUpperCase();
+    }
+});
+
+function logout() {
+    TOKEN = '';
+    localStorage.removeItem('admin_token');
+    appEl.classList.remove('visible');
+    loginScreen.classList.remove('hidden');
+    document.getElementById('login-user').value = '';
+    document.getElementById('login-pass').value = '';
+}
+
+document.getElementById('btn-logout').addEventListener('click', logout);
+
+async function showApp() {
+    loginScreen.classList.add('hidden');
+    appEl.classList.add('visible');
+    loadAll();
+}
+
+// Auto-login si token stocké
+(async () => {
+    if (!TOKEN) return;
+    try {
+        // Vérifie que le token est encore valide
+        const res = await fetch(API + '/projects', { headers: authHeaders() });
+        if (res.status === 401) { TOKEN = ''; localStorage.removeItem('admin_token'); return; }
+        showApp();
+    } catch { /* réseau indispo, rester sur login */ }
+})();
+
+// ══════════════════════════════════════════════
+//  NAV
+// ══════════════════════════════════════════════
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        item.classList.add('active');
+        document.getElementById('section-' + item.dataset.section).classList.add('active');
+    });
+});
+
+// ══════════════════════════════════════════════
+//  FILE INPUT LABELS
+// ══════════════════════════════════════════════
+function bindFileLabel(inputId, labelId) {
+    document.getElementById(inputId).addEventListener('change', function () {
+        const label = document.getElementById(labelId);
+        if (this.files.length) {
+            label.textContent = this.files[0].name;
+            label.classList.add('file-chosen');
+        }
+    });
+}
+bindFileLabel('proj-video-file',  'proj-file-label');
+bindFileLabel('media-img-file',   'media-file-label');
+bindFileLabel('client-logo-file', 'client-file-label');
+
+// ══════════════════════════════════════════════
+//  PROJETS
+// ══════════════════════════════════════════════
+async function loadProjects() {
+    const list  = document.getElementById('projects-list');
+    const count = document.getElementById('projects-count');
+    list.innerHTML = '<div class="empty-state"><span class="spin"></span> Chargement...</div>';
+    try {
+        const items = await api('GET', '/projects');
+        count.textContent = items.length + ' projet' + (items.length !== 1 ? 's' : '');
+        if (!items.length) {
+            list.innerHTML = '<div class="empty-state">Aucun projet · Ajoutez-en un ci-dessus</div>';
+            return;
+        }
+        list.innerHTML = '';
+        items.forEach(p => {
+            const row = document.createElement('div');
+            row.className = 'item-row';
+            const isSoon = p.status === 'coming_soon';
+            row.dataset.id = p.id;
+            row.draggable = true;
+            row.innerHTML = `
+                <div class="drag-handle" title="Glisser pour réordonner">⠿</div>
+                <div class="item-thumb-placeholder">VID</div>
+                <div class="item-info">
+                    <div class="item-title">${p.title || '—'}</div>
+                    <div class="item-meta">${p.video_url || '—'}</div>
+                </div>
+                ${isSoon ? '<span class="item-badge soon">Coming Soon</span>' : '<span class="item-badge">Publié</span>'}
+                <div class="item-actions">
+                    <button class="btn-icon edit-btn">ÉDITER</button>
+                    <button class="btn-icon danger">SUPPRIMER</button>
+                </div>`;
+            row.querySelector('.btn-icon.danger').addEventListener('click', async () => {
+                if (!confirm('Supprimer "' + p.title + '" ?')) return;
+                await api('DELETE', '/projects/' + p.id);
+                loadProjects();
+            });
+            row.querySelector('.btn-icon.edit-btn').addEventListener('click', () => {
+                startEditProject(p);
+            });
+            // Drag & drop
+            row.addEventListener('dragstart', (e) => {
+                e.dataTransfer.effectAllowed = 'move';
+                row.classList.add('dragging');
+                list._dragging = row;
+            });
+            row.addEventListener('dragend', () => {
+                row.classList.remove('dragging');
+                list.querySelectorAll('.item-row').forEach(r => r.classList.remove('drag-over'));
+                // Sauvegarde le nouvel ordre
+                const ids = [...list.querySelectorAll('.item-row')].map(r => parseInt(r.dataset.id));
+                api('POST', '/projects/reorder', { ids }).catch(() => {});
+            });
+            row.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (list._dragging && list._dragging !== row) {
+                    list.querySelectorAll('.item-row').forEach(r => r.classList.remove('drag-over'));
+                    row.classList.add('drag-over');
+                    const rows = [...list.querySelectorAll('.item-row')];
+                    const dragIdx = rows.indexOf(list._dragging);
+                    const overIdx = rows.indexOf(row);
+                    if (dragIdx < overIdx) row.after(list._dragging);
+                    else row.before(list._dragging);
+                }
+            });
+            list.appendChild(row);
+        });
+    } catch(e) {
+        list.innerHTML = '<div class="empty-state">Erreur de chargement</div>';
+    }
+}
+
+// ── État édition ──────────────────────────────────────────────
+let editingProjectId = null;
+
+function startEditProject(p) {
+    editingProjectId = p.id;
+    document.getElementById('proj-form-title').textContent = 'MODIFIER — ' + p.title;
+    document.getElementById('proj-title').value     = p.title || '';
+    document.getElementById('proj-status').value    = p.status || 'published';
+    document.getElementById('proj-video-url').value = p.video_url || '';
+    document.getElementById('proj-more').value      = (p.more || []).join(', ');
+    document.getElementById('btn-add-project').textContent = 'METTRE À JOUR';
+    document.getElementById('btn-cancel-edit').style.display = 'inline-block';
+    document.getElementById('form-projects').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function resetProjectForm() {
+    editingProjectId = null;
+    document.getElementById('proj-form-title').textContent    = 'NOUVEAU PROJET';
+    document.getElementById('proj-title').value               = '';
+    document.getElementById('proj-video-url').value           = '';
+    document.getElementById('proj-more').value                = '';
+    document.getElementById('proj-video-file').value          = '';
+    document.getElementById('proj-file-label').textContent    = 'Glisser ou cliquer pour choisir une vidéo (.mp4)';
+    document.getElementById('proj-file-label').classList.remove('file-chosen');
+    document.getElementById('btn-add-project').textContent    = 'AJOUTER LE PROJET';
+    document.getElementById('btn-cancel-edit').style.display  = 'none';
+}
+
+document.getElementById('btn-cancel-edit').addEventListener('click', resetProjectForm);
+
+document.getElementById('btn-add-project').addEventListener('click', async () => {
+    const title    = document.getElementById('proj-title').value.trim();
+    const status   = document.getElementById('proj-status').value;
+    const file     = document.getElementById('proj-video-file').files[0];
+    let   videoUrl = document.getElementById('proj-video-url').value.trim();
+    const more     = document.getElementById('proj-more').value.trim();
+    const statusEl = document.getElementById('proj-status-msg');
+
+    if (!title) return setStatus(statusEl, 'Titre requis', 'err');
+    // En mode édition, l'URL peut rester inchangée (déjà remplie)
+    if (!editingProjectId && !file && !videoUrl) return setStatus(statusEl, 'Fichier ou URL requis', 'err');
+
+    const btn = document.getElementById('btn-add-project');
+    btn.disabled = true;
+    setStatus(statusEl, 'En cours…');
+
+    try {
+        if (file) {
+            videoUrl = await uploadFile(file, 'videos', document.getElementById('proj-upload-bar'));
+        }
+        const moreArr = more ? more.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+        if (editingProjectId) {
+            await api('PUT', '/projects/' + editingProjectId, { title, status, video_url: videoUrl, more: moreArr });
+            setStatus(statusEl, 'Projet mis à jour !', 'ok');
+        } else {
+            await api('POST', '/projects', { title, status, video_url: videoUrl, more: moreArr });
+            setStatus(statusEl, 'Projet ajouté !', 'ok');
+        }
+        resetProjectForm();
+        loadProjects();
+    } catch(e) {
+        setStatus(statusEl, e.message, 'err');
+    } finally {
+        btn.disabled = false;
+    }
+});
+
+// ══════════════════════════════════════════════
+//  PHOTOS
+// ══════════════════════════════════════════════
+async function loadMedia() {
+    const list  = document.getElementById('media-list');
+    const count = document.getElementById('media-count');
+    list.innerHTML = '<div class="empty-state"><span class="spin"></span> Chargement...</div>';
+    try {
+        const items = await api('GET', '/media');
+        count.textContent = items.length + ' photo' + (items.length !== 1 ? 's' : '');
+        if (!items.length) {
+            list.innerHTML = '<div class="empty-state">Aucune photo · Ajoutez-en une ci-dessus</div>';
+            return;
+        }
+        list.innerHTML = '';
+        items.forEach(m => {
+            const row = document.createElement('div');
+            row.className = 'item-row';
+            const src = m.url || m.src || '';
+            row.innerHTML = `
+                ${src ? `<img class="item-thumb" src="${src}" alt="">` : '<div class="item-thumb-placeholder">IMG</div>'}
+                <div class="item-info">
+                    <div class="item-title">${m.name || '—'}</div>
+                    <div class="item-meta">${m.date || ''} ${m.tools ? '· ' + m.tools : ''}</div>
+                </div>
+                <div class="item-actions">
+                    <button class="btn-icon danger" data-id="${m.id}">SUPPRIMER</button>
+                </div>`;
+            row.querySelector('.btn-icon.danger').addEventListener('click', async () => {
+                if (!confirm('Supprimer cette photo ?')) return;
+                await api('DELETE', '/media/' + m.id);
+                loadMedia();
+            });
+            list.appendChild(row);
+        });
+    } catch(e) {
+        list.innerHTML = '<div class="empty-state">Erreur de chargement</div>';
+    }
+}
+
+document.getElementById('btn-add-media').addEventListener('click', async () => {
+    const name     = document.getElementById('media-name').value.trim();
+    const date     = document.getElementById('media-date').value.trim();
+    const tools    = document.getElementById('media-tools').value.trim();
+    const file     = document.getElementById('media-img-file').files[0];
+    let   imgUrl   = document.getElementById('media-img-url').value.trim();
+    const statusEl = document.getElementById('media-status-msg');
+
+    if (!name) return setStatus(statusEl, 'Nom requis', 'err');
+    if (!file && !imgUrl) return setStatus(statusEl, 'Fichier ou URL requis', 'err');
+
+    const btn = document.getElementById('btn-add-media');
+    btn.disabled = true;
+    setStatus(statusEl, 'En cours…');
+
+    try {
+        if (file) imgUrl = await uploadFile(file, 'photos', null);
+        await api('POST', '/media', { name, date, tools, url: imgUrl });
+        setStatus(statusEl, 'Photo ajoutée !', 'ok');
+        ['media-name','media-date','media-tools','media-img-url'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+        document.getElementById('media-img-file').value = '';
+        document.getElementById('media-file-label').textContent = 'Glisser ou cliquer (.jpg, .webp, .png)';
+        document.getElementById('media-file-label').classList.remove('file-chosen');
+        loadMedia();
+    } catch(e) {
+        setStatus(statusEl, e.message, 'err');
+    } finally {
+        btn.disabled = false;
+    }
+});
+
+// ══════════════════════════════════════════════
+//  CLIENTS
+// ══════════════════════════════════════════════
+async function loadClients() {
+    const grid  = document.getElementById('clients-list');
+    const count = document.getElementById('clients-count');
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><span class="spin"></span> Chargement...</div>';
+    try {
+        const items = await api('GET', '/clients');
+        count.textContent = items.length + ' client' + (items.length !== 1 ? 's' : '');
+        if (!items.length) {
+            grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">Aucun client · Ajoutez-en un ci-dessus</div>';
+            return;
+        }
+        grid.innerHTML = '';
+        items.forEach(c => {
+            const card = document.createElement('div');
+            card.className = 'client-card';
+            const logoSrc = c.logo_url || c.logo || '';
+            card.innerHTML = `
+                ${logoSrc
+                    ? `<img class="client-logo" src="${logoSrc}" alt="${c.name}">`
+                    : `<div style="height:36px;display:flex;align-items:center;font-size:.45rem;letter-spacing:2px;color:var(--muted);">LOGO</div>`
+                }
+                <div class="client-name">${c.name || '—'}</div>
+                <button class="client-del" data-id="${c.id}">SUPPRIMER</button>`;
+            card.querySelector('.client-del').addEventListener('click', async () => {
+                if (!confirm('Supprimer "' + c.name + '" ?')) return;
+                await api('DELETE', '/clients/' + c.id);
+                loadClients();
+            });
+            grid.appendChild(card);
+        });
+    } catch(e) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">Erreur de chargement</div>';
+    }
+}
+
+document.getElementById('btn-add-client').addEventListener('click', async () => {
+    const name     = document.getElementById('client-name').value.trim();
+    const file     = document.getElementById('client-logo-file').files[0];
+    let   logoUrl  = document.getElementById('client-logo-url').value.trim();
+    const statusEl = document.getElementById('client-status-msg');
+
+    if (!name) return setStatus(statusEl, 'Nom requis', 'err');
+    if (!file && !logoUrl) return setStatus(statusEl, 'Logo requis', 'err');
+
+    const btn = document.getElementById('btn-add-client');
+    btn.disabled = true;
+    setStatus(statusEl, 'En cours…');
+
+    try {
+        if (file) logoUrl = await uploadFile(file, 'clients', null);
+        await api('POST', '/clients', { name, logo_url: logoUrl });
+        setStatus(statusEl, 'Client ajouté !', 'ok');
+        document.getElementById('client-name').value = '';
+        document.getElementById('client-logo-url').value = '';
+        document.getElementById('client-logo-file').value = '';
+        document.getElementById('client-file-label').textContent = 'Glisser ou cliquer (SVG, PNG, WebP)';
+        document.getElementById('client-file-label').classList.remove('file-chosen');
+        loadClients();
+    } catch(e) {
+        setStatus(statusEl, e.message, 'err');
+    } finally {
+        btn.disabled = false;
+    }
+});
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+function loadAll() {
+    loadProjects();
+    loadMedia();
+    loadClients();
+}
+</script>
+</body>
+</html>

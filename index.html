@@ -1059,9 +1059,9 @@ function switchPage(target) {
 Object.keys(navLinks).forEach(function(k){ if(navLinks[k]) navLinks[k].addEventListener('click', function(){ switchPage(k); }); });
 
 /* ══════════════════════════════════════════════
-   PROJETS — ajouter / modifier ici
+   PROJETS — chargés depuis l'API (fallback statique si hors-ligne)
    ══════════════════════════════════════════════ */
-const PROJECTS = [
+var PROJECTS_FALLBACK = [
     {
         title: 'BOILER ROOM',
         videoSrc: 'https://assets.frantzimann.org/boiler-room-2025/boiler-2025-2.mp4',
@@ -1128,9 +1128,31 @@ const PROJECTS = [
     /* — pour ajouter un projet : copier un bloc { title, videoSrc, more:[] } — */
 ];
 
+// Disponible immédiatement (fallback), remplacé dès que l'API répond
+var PROJECTS = PROJECTS_FALLBACK;
+window.PROJECTS = PROJECTS;
+
+window._projectsReady = fetch('https://portfolio-api.francois-teule.workers.dev/projects')
+    .then(function(res){ return res.json(); })
+    .then(function(data){
+        if(Array.isArray(data) && data.length){
+            PROJECTS = data.map(function(p){
+                return {
+                    title:    p.title,
+                    videoSrc: p.video_url || '',
+                    more:     Array.isArray(p.more) ? p.more : [],
+                    status:   p.status || 'published'
+                };
+            });
+            window.PROJECTS = PROJECTS;
+        }
+    })
+    .catch(function(){ /* garde le fallback */ });
+
 /* ══════════════════════════════════════════════
-   MOBILE
+   MOBILE + PANEL — initialisés après chargement des projets
 ══════════════════════════════════════════════ */
+window._projectsReady.then(function(){
 var isMobile = window.innerWidth <= 768;
 
 if(isMobile) {
@@ -1365,6 +1387,7 @@ if(isMobile) {
         window.openProject(window.currentActiveIndex || 0);
     });
 })();
+}); // fin _projectsReady.then
 </script>
 
 <script type="module">
@@ -1376,6 +1399,10 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 
 /* ── Sur mobile : pas de Three.js ── */
 if(window.innerWidth <= 768) { throw 0; }
+
+/* ── Attend que les projets soient chargés depuis l'API ── */
+await window._projectsReady;
+const PROJECTS = window.PROJECTS;
 
 const ENABLE_RGB = true;
 const ENABLE_SCREEN_LIGHT = true; // false = désactive la lumière dynamique (gain de fluidité)
