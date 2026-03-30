@@ -843,20 +843,31 @@ var PHOTOS_CAPTURE = [
     { id:'capture-2', src:'./EXPORT INSTA/2.jpg' }
 ];
 
-/* ── PHOTO CAROUSEL + ROUE ── */
-(function(){
-    var ALL_PHOTOS = [
-        { id:'gucci-flora',  src:'https://assets.frantzimann.org/perfume/GUCCI/Gucci%20Flora%20Gorgeous%20Orchid.webp', cat:'IA — PARFUMS' },
-        { id:'hermes-1',     src:'https://assets.frantzimann.org/perfume/HERMES/hermes-1.webp',                          cat:'IA — PARFUMS' },
-        { id:'issey-v1',     src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey1.webp',                         cat:'IA — PARFUMS' },
-        { id:'issey-v2',     src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey2.webp',                         cat:'IA — PARFUMS' },
-        { id:'mfk-1',        src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis.webp',               cat:'IA — PARFUMS' },
-        { id:'mfk-2',        src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis1.webp',              cat:'IA — PARFUMS' },
-        { id:'valentino-1',  src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino1.webp',                      cat:'IA — PARFUMS' },
-        { id:'valentino-2',  src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino2.webp',                      cat:'IA — PARFUMS' },
-        { id:'creed-1',      src:'https://assets.frantzimann.org/perfume/CREED/creed-1.webp',                             cat:'IA — PARFUMS' },
-        { id:'creed-2',      src:'https://assets.frantzimann.org/perfume/CREED/creed-2.webp',                             cat:'IA — PARFUMS' },
-    ];
+/* ── PHOTO CAROUSEL + ROUE — données depuis API ── */
+var _ALL_PHOTOS_FALLBACK = [
+    { src:'https://assets.frantzimann.org/perfume/GUCCI/Gucci%20Flora%20Gorgeous%20Orchid.webp', name:'Gucci Flora', date:'Fév. 2026', tools:'Midjourney', cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/HERMES/hermes-1.webp',                          name:'Hermès',      date:'Fév. 2026', tools:'Midjourney', cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey1.webp',                         name:'Issey V1',    date:'Jan. 2026', tools:'Midjourney', cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey2.webp',                         name:'Issey V2',    date:'Jan. 2026', tools:'Midjourney', cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis.webp',               name:'MFK 01',      date:'Fév. 2026', tools:'ChatGPT',    cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis1.webp',              name:'MFK 02',      date:'Fév. 2026', tools:'ChatGPT',    cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino1.webp',                       name:'Valentino 01',date:'Fév. 2026', tools:'Midjourney', cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino2.webp',                       name:'Valentino 02',date:'Fév. 2026', tools:'Midjourney', cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/CREED/creed-1.webp',                              name:'Creed 01',    date:'2026',       tools:'Sony A7 IV', cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/CREED/creed-2.webp',                              name:'Creed 02',    date:'2026',       tools:'Sony A7 IV', cat:'' },
+];
+
+fetch('https://portfolio-api.francois-teule.workers.dev/media')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+        return (Array.isArray(data) && data.length)
+            ? data.map(function(m){ return { src: m.url, name: m.name, date: m.date, tools: m.tools, cat: '' }; })
+            : _ALL_PHOTOS_FALLBACK;
+    })
+    .catch(function(){ return _ALL_PHOTOS_FALLBACK; })
+    .then(function(ALL_PHOTOS) {
+    var TOTAL = ALL_PHOTOS.length;
+    if(!TOTAL) return;
 
     var TOTAL = ALL_PHOTOS.length;
 
@@ -944,10 +955,9 @@ var PHOTOS_CAPTURE = [
         if(idx === lastActive) return;
         lastActive = idx;
         var p = ALL_PHOTOS[idx];
-        var m = PHOTO_META[p.id] || {};
-        infName.textContent = m.name || '';
-        infMeta.textContent = [m.date, m.tools].filter(Boolean).join('  ·  ');
-        catLbl.textContent  = p.cat || '';
+        infName.textContent = p.name  || '';
+        infMeta.textContent = [p.date, p.tools].filter(Boolean).join('  ·  ');
+        catLbl.textContent  = p.cat   || '';
     }
 
     function render() {
@@ -1033,7 +1043,7 @@ var PHOTOS_CAPTURE = [
         function go() { render(); startPhotoWheelIfNeeded(); }
         if(_preloaded) { go(); } else { _onPreloaded = go; }
     };
-})();
+}); // fin fetch media .then
 
 /* ── NAVIGATION ── */
 var currentPage = 'selects';
