@@ -927,8 +927,11 @@ async function loadMedia() {
         items.forEach(m => {
             const row = document.createElement('div');
             row.className = 'item-row';
+            row.dataset.id = m.id;
+            row.draggable = true;
             const src = m.url || '';
             row.innerHTML = `
+                <div class="drag-handle" title="Glisser pour réordonner">⠿</div>
                 ${src ? `<img class="item-thumb" src="${src}" alt="" loading="lazy">` : '<div class="item-thumb-placeholder">IMG</div>'}
                 <div class="item-info">
                     <div class="item-title">${m.name || '—'}</div>
@@ -944,6 +947,28 @@ async function loadMedia() {
                 loadMedia();
             });
             row.querySelector('.edit-media-btn').addEventListener('click', () => startEditMedia(m));
+            // Drag & drop
+            row.addEventListener('dragstart', e => {
+                e.dataTransfer.effectAllowed = 'move';
+                row.classList.add('dragging');
+                list._dragging = row;
+            });
+            row.addEventListener('dragend', () => {
+                row.classList.remove('dragging');
+                list.querySelectorAll('.item-row').forEach(r => r.classList.remove('drag-over'));
+                const ids = [...list.querySelectorAll('.item-row')].map(r => parseInt(r.dataset.id));
+                api('POST', '/media/reorder', { ids }).catch(() => {});
+            });
+            row.addEventListener('dragover', e => {
+                e.preventDefault();
+                if (list._dragging && list._dragging !== row) {
+                    list.querySelectorAll('.item-row').forEach(r => r.classList.remove('drag-over'));
+                    row.classList.add('drag-over');
+                    const rows = [...list.querySelectorAll('.item-row')];
+                    if (rows.indexOf(list._dragging) < rows.indexOf(row)) row.after(list._dragging);
+                    else row.before(list._dragging);
+                }
+            });
             list.appendChild(row);
         });
     } catch(e) {

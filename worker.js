@@ -137,7 +137,7 @@ export default {
 
                 if (method === "GET") {
                     const { results } = await env.portfolio_db
-                        .prepare("SELECT * FROM media ORDER BY id DESC")
+                        .prepare("SELECT * FROM media ORDER BY sort_order ASC, id ASC")
                         .all();
                     return json(results);
                 }
@@ -151,6 +151,17 @@ export default {
                         .run();
                     return json({ success: true });
                 }
+            }
+
+            // POST /media/reorder
+            if (path === "/media/reorder" && method === "POST") {
+                const { ids } = await request.json();
+                if (!Array.isArray(ids)) return json({ error: "ids[] requis" }, 400);
+                const stmts = ids.map((id, i) =>
+                    env.portfolio_db.prepare("UPDATE media SET sort_order=? WHERE id=?").bind(i + 1, id)
+                );
+                await env.portfolio_db.batch(stmts);
+                return json({ success: true });
             }
 
             // PUT /media/:id
