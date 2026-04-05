@@ -1538,16 +1538,28 @@ function doSnap(){
 }
 
 
-window.addEventListener('wheel',(e)=>{ 
-    if(window.currentPage!=='selects'||isProjectOpen)return; 
+window.addEventListener('wheel',(e)=>{
+    if(window.currentPage!=='selects') return;
+    const absX=Math.abs(e.deltaX), absY=Math.abs(e.deltaY);
+    const isHoriz=absX>absY;
+    // Toujours bloquer le swipe horizontal → empêche "page précédente" du navigateur
+    if(isHoriz) e.preventDefault();
+    if(isProjectOpen){
+        // Convertir le swipe horizontal en scroll vertical dans le panneau projet
+        if(isHoriz){
+            const inner=document.getElementById('project-inner');
+            if(inner) inner.scrollTop+=e.deltaX;
+        }
+        return;
+    }
     handleUserInteraction();
-    clearTimeout(snapTimeout); 
-    isTouching=true; 
-    btnProject.classList.remove('visible'); 
-    projectPreview.classList.remove('visible'); 
-    scrollTarget+=(e.deltaY+e.deltaX)*0.002; 
-    snapTimeout=setTimeout(doSnap,250); 
-});
+    clearTimeout(snapTimeout);
+    isTouching=true;
+    btnProject.classList.remove('visible');
+    projectPreview.classList.remove('visible');
+    scrollTarget+=(e.deltaY+e.deltaX)*0.002;
+    snapTimeout=setTimeout(doSnap,250);
+},{ passive:false });
 
 let t3dX=0;
 window.addEventListener('touchstart',(e)=>{ 
