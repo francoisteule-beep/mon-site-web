@@ -892,8 +892,53 @@ fetch('https://portfolio-api.francois-teule.workers.dev/media')
         _decodePromises.push(img.decode ? img.decode().catch(function(){}) : Promise.resolve());
     });
 
-    /* ── Roue désactivée temporairement pour diagnostic perf ── */
+    /* ── Roue canvas ── */
     var thumbs = [];
+    var wCtx = null, wheelCanvas = null;
+    var thumbImages = ALL_PHOTOS.map(function(p) {
+        var img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = p.src;
+        _decodePromises.push(img.decode ? img.decode().catch(function(){}) : Promise.resolve());
+        return img;
+    });
+
+    wheelCanvas = document.createElement('canvas');
+    wheelCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:10;pointer-events:auto;';
+    wheelEl.style.pointerEvents = 'auto';
+    wheelEl.appendChild(wheelCanvas);
+    wCtx = wheelCanvas.getContext('2d');
+
+    function resizeWheelCanvas() {
+        var dpr = window.devicePixelRatio || 1;
+        wheelCanvas.width  = window.innerWidth  * dpr;
+        wheelCanvas.height = window.innerHeight * dpr;
+        wCtx.scale(dpr, dpr);
+    }
+    resizeWheelCanvas();
+    window.addEventListener('resize', resizeWheelCanvas);
+
+    /* Click sur la roue canvas → hit-test */
+    wheelCanvas.addEventListener('click', function(e) {
+        var rect = wheelCanvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var my = e.clientY - rect.top;
+        var TAU = 2 * Math.PI, HW = 26, HH = 35;
+        var baseAngle = -(wPos / TOTAL) * TAU - Math.PI / 2;
+        for(var s = 0; s < TOTAL; s++) {
+            var angle = baseAngle + (s / TOTAL) * TAU;
+            var x = _cx + _rx * Math.cos(angle) - HW;
+            var y = _cy + _ry * Math.sin(angle) - HH;
+            if(mx >= x && mx <= x + HW*2 && my >= y && my <= y + HH*2) {
+                var diff = s - wPos;
+                diff = diff - Math.round(diff / TOTAL) * TOTAL;
+                wTarget = wPos + diff;
+                clearTimeout(snapTimer);
+                startPhotoWheelIfNeeded();
+                break;
+            }
+        }
+    });
 
     /* ── Attendre que toutes les images soient décodées ── */
     var _preloaded = false, _onPreloaded = null;
@@ -943,6 +988,7 @@ fetch('https://portfolio-api.francois-teule.workers.dev/media')
 
     function render() {
         var TAU = 2 * Math.PI;
+        var HW = 26, HH = 35;
 
         /* Index de la slide centrée */
         var centerIdx = (((Math.round(wPos) % TOTAL) + TOTAL) % TOTAL);
@@ -957,7 +1003,27 @@ fetch('https://portfolio-api.francois-teule.workers.dev/media')
             if(stx !== _lastSlide[i]) { slides[i].style.transform = stx; _lastSlide[i] = stx; }
         }
 
-        /* ── Roue désactivée pour diagnostic ── */
+        /* ── Roue canvas ── */
+        if(wCtx) {
+            wCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+            var baseAngle = -(wPos / TOTAL) * TAU - Math.PI / 2;
+            for(var s = 0; s < TOTAL; s++) {
+                var angle = baseAngle + (s / TOTAL) * TAU;
+                var x = _cx + _rx * Math.cos(angle) - HW;
+                var y = _cy + _ry * Math.sin(angle) - HH;
+                var img = thumbImages[s];
+                if(!img.complete) continue;
+                wCtx.globalAlpha = (s === centerIdx) ? 1.0 : 0.6;
+                wCtx.drawImage(img, x, y, HW * 2, HH * 2);
+                if(s === centerIdx) {
+                    wCtx.globalAlpha = 1;
+                    wCtx.strokeStyle = 'rgba(255,255,255,0.75)';
+                    wCtx.lineWidth = 1;
+                    wCtx.strokeRect(x + 0.5, y + 0.5, HW * 2 - 1, HH * 2 - 1);
+                }
+            }
+            wCtx.globalAlpha = 1;
+        }
     }
 
     /* ── Boucle RAF avec delta-time et arrêt auto ── */
