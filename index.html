@@ -266,6 +266,7 @@
         position: absolute; top: 0; left: 0;
         width: calc(100% / 3); height: 100%;
         overflow: hidden;
+        will-change: transform;
     }
     .carousel-slide img {
         width: 100%; height: 100%;
@@ -968,12 +969,17 @@ fetch('https://portfolio-api.francois-teule.workers.dev/media')
         var centerIdx = (((Math.round(wPos) % TOTAL) + TOTAL) % TOTAL);
         setInfo(centerIdx);
 
-        /* ── Carrousel : 3 slides visibles, centrée sur la slide active ── */
+        /* ── Carrousel : slides proches seulement (±2), les autres cachées ── */
         for(var i = 0; i < TOTAL; i++) {
             var diff = i - wPos;
-            diff = diff - Math.round(diff / TOTAL) * TOTAL; /* wrap au plus court */
-            var sx = (_slideOff + diff * _slideW).toFixed(0) + 'px';
-            var stx = 'translateX(' + sx + ')';
+            diff = diff - Math.round(diff / TOTAL) * TOTAL;
+            if(Math.abs(diff) > 2) {
+                if(slides[i].style.display !== 'none') slides[i].style.display = 'none';
+                continue;
+            }
+            if(slides[i].style.display === 'none') slides[i].style.display = '';
+            var sx = (_slideOff + diff * _slideW).toFixed(0);
+            var stx = 'translate3d(' + sx + 'px,0,0)';
             if(stx !== _lastSlide[i]) { slides[i].style.transform = stx; _lastSlide[i] = stx; }
         }
 
@@ -983,7 +989,7 @@ fetch('https://portfolio-api.francois-teule.workers.dev/media')
             var angle = baseAngle + (s / TOTAL) * TAU;
             var x = (_cx + _rx * Math.cos(angle) - HW).toFixed(1);
             var y = (_cy + _ry * Math.sin(angle) - HH).toFixed(1);
-            var tx = 'translate(' + x + 'px,' + y + 'px)';
+            var tx = 'translate3d(' + x + 'px,' + y + 'px,0)';
             if(tx !== _lastTx[s]) { thumbs[s].style.transform = tx; _lastTx[s] = tx; }
             var isAct = s === centerIdx;
             if(isAct !== _lastIsAct[s]) { thumbs[s].classList.toggle('is-active', isAct); _lastIsAct[s] = isAct; }
