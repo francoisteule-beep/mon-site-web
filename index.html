@@ -299,6 +299,7 @@
         box-shadow: 0 2px 12px rgba(0,0,0,0.55);
         opacity: 0.6;
         transition: opacity 0.2s ease, outline 0.2s ease;
+        will-change: transform;
     }
     .wheel-thumb img {
         position: absolute; inset: 0; width: 100%; height: 100%;
@@ -898,6 +899,7 @@ fetch('https://portfolio-api.francois-teule.workers.dev/media')
         var img = document.createElement('img');
         img.src = ALL_PHOTOS[s].src;
         img.alt = ''; img.draggable = false;
+        if(img.decode) _decodePromises.push(img.decode().catch(function(){}));
         el.appendChild(img);
         el.addEventListener('click', (function(idx) {
             return function() {
