@@ -879,31 +879,21 @@ fetch('https://portfolio-api.francois-teule.workers.dev/media')
     var infMeta    = document.getElementById('photo-info-meta');
     var catLbl     = document.getElementById('photo-category-label');
 
-    /* ── Carousel désactivé temporairement pour diagnostic perf ── */
+    /* ── Build carousel slides ── */
     var slides = [], _decodePromises = [];
-
-    /* ── Build wheel thumbs (tous les TOTAL, images fixées) ── */
-    var thumbs = [];
-    for(var s = 0; s < TOTAL; s++) {
-        var el = document.createElement('div');
-        el.className = 'wheel-thumb';
+    ALL_PHOTOS.forEach(function(p) {
+        var slide = document.createElement('div');
+        slide.className = 'carousel-slide';
         var img = document.createElement('img');
-        img.src = ALL_PHOTOS[s].src;
-        img.alt = ''; img.draggable = false;
-        if(img.decode) _decodePromises.push(img.decode().catch(function(){}));
-        el.appendChild(img);
-        el.addEventListener('click', (function(idx) {
-            return function() {
-                var diff = idx - wPos;
-                diff = diff - Math.round(diff / TOTAL) * TOTAL;
-                wTarget = wPos + diff;
-                clearTimeout(snapTimer);
-                startPhotoWheelIfNeeded();
-            };
-        })(s));
-        wheelEl.appendChild(el);
-        thumbs.push(el);
-    }
+        img.src = p.src; img.alt = ''; img.draggable = false;
+        slide.appendChild(img);
+        carouselEl.appendChild(slide);
+        slides.push(slide);
+        _decodePromises.push(img.decode ? img.decode().catch(function(){}) : Promise.resolve());
+    });
+
+    /* ── Roue désactivée temporairement pour diagnostic perf ── */
+    var thumbs = [];
 
     /* ── Attendre que toutes les images soient décodées ── */
     var _preloaded = false, _onPreloaded = null;
@@ -952,24 +942,22 @@ fetch('https://portfolio-api.francois-teule.workers.dev/media')
     }
 
     function render() {
-        var HW = 26, HH = 35; /* demi-taille du thumb (52×70) */
         var TAU = 2 * Math.PI;
 
         /* Index de la slide centrée */
         var centerIdx = (((Math.round(wPos) % TOTAL) + TOTAL) % TOTAL);
         setInfo(centerIdx);
 
-        /* ── Roue : tous les thumbs sur une ellipse, rotation liée à wPos ── */
-        var baseAngle = -(wPos / TOTAL) * TAU - Math.PI / 2;
-        for(var s = 0; s < TOTAL; s++) {
-            var angle = baseAngle + (s / TOTAL) * TAU;
-            var x = (_cx + _rx * Math.cos(angle) - HW).toFixed(1);
-            var y = (_cy + _ry * Math.sin(angle) - HH).toFixed(1);
-            var tx = 'translate3d(' + x + 'px,' + y + 'px,0)';
-            if(tx !== _lastTx[s]) { thumbs[s].style.transform = tx; _lastTx[s] = tx; }
-            var isAct = s === centerIdx;
-            if(isAct !== _lastIsAct[s]) { thumbs[s].classList.toggle('is-active', isAct); _lastIsAct[s] = isAct; }
+        /* ── Carrousel slides ── */
+        for(var i = 0; i < slides.length; i++) {
+            var diff = i - wPos;
+            diff = diff - Math.round(diff / TOTAL) * TOTAL;
+            var sx = (_slideOff + diff * _slideW).toFixed(0);
+            var stx = 'translate3d(' + sx + 'px,0,0)';
+            if(stx !== _lastSlide[i]) { slides[i].style.transform = stx; _lastSlide[i] = stx; }
         }
+
+        /* ── Roue désactivée pour diagnostic ── */
     }
 
     /* ── Boucle RAF avec delta-time et arrêt auto ── */
