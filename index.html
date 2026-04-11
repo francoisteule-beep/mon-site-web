@@ -267,7 +267,9 @@
         width: calc(100% / 3); height: 100%;
         overflow: hidden;
         will-change: transform;
+        transition: opacity 0.15s ease;
     }
+    #photo-carousel.is-scrolling .carousel-slide { opacity: 0; pointer-events: none; }
     .carousel-slide img {
         width: 100%; height: 100%;
         object-fit: cover; display: block;
@@ -1005,8 +1007,13 @@ fetch('https://portfolio-api.francois-teule.workers.dev/media')
         _lastTime = now;
         var diff = wTarget - wPos;
         if(Math.abs(diff) < 0.0005) {
-            wPos = wTarget; render(); rafWheel = null; return;
+            wPos = wTarget;
+            carouselEl.classList.remove('is-scrolling');
+            render(); rafWheel = null; return;
         }
+        /* Cacher le carousel plein-écran pendant le mouvement → thumbs seuls animent */
+        if(Math.abs(diff) > 0.05) carouselEl.classList.add('is-scrolling');
+        else carouselEl.classList.remove('is-scrolling');
         wPos += diff * (1 - Math.exp(-LERP_SPEED * dt));
         render();
         rafWheel = requestAnimationFrame(tickWheel);
