@@ -1,2 +1,4 @@
 .wrangler/
 ._*
+node_modules/
+dist/
