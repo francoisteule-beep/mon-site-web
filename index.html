@@ -970,12 +970,8 @@ fetch('https://portfolio-api.francois-teule.workers.dev/media')
         var diff = wTarget - wPos;
         if(Math.abs(diff) < 0.0005) {
             wPos = wTarget;
-            carouselEl.classList.remove('is-scrolling');
             render(); rafWheel = null; return;
         }
-        /* Cacher le carousel plein-écran pendant le mouvement → thumbs seuls animent */
-        if(Math.abs(diff) > 0.05) carouselEl.classList.add('is-scrolling');
-        else carouselEl.classList.remove('is-scrolling');
         wPos += diff * (1 - Math.exp(-LERP_SPEED * dt));
         render();
         rafWheel = requestAnimationFrame(tickWheel);
