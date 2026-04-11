@@ -879,20 +879,8 @@ fetch('https://portfolio-api.francois-teule.workers.dev/media')
     var infMeta    = document.getElementById('photo-info-meta');
     var catLbl     = document.getElementById('photo-category-label');
 
-    /* ── Build carousel slides avec <img> + decode() forcé ── */
-    /* img.decode() garantit que l'image est décodée ET uploadée en GPU          */
-    /* avant le premier affichage : élimine le flash/saccade à la bascule.      */
+    /* ── Carousel désactivé temporairement pour diagnostic perf ── */
     var slides = [], _decodePromises = [];
-    ALL_PHOTOS.forEach(function(p) {
-        var slide = document.createElement('div');
-        slide.className = 'carousel-slide';
-        var img = document.createElement('img');
-        img.src = p.src; img.alt = ''; img.draggable = false;
-        slide.appendChild(img);
-        carouselEl.appendChild(slide);
-        slides.push(slide);
-        _decodePromises.push(img.decode ? img.decode().catch(function(){}) : Promise.resolve());
-    });
 
     /* ── Build wheel thumbs (tous les TOTAL, images fixées) ── */
     var thumbs = [];
@@ -970,20 +958,6 @@ fetch('https://portfolio-api.francois-teule.workers.dev/media')
         /* Index de la slide centrée */
         var centerIdx = (((Math.round(wPos) % TOTAL) + TOTAL) % TOTAL);
         setInfo(centerIdx);
-
-        /* ── Carrousel : slides proches seulement (±2), les autres cachées ── */
-        for(var i = 0; i < TOTAL; i++) {
-            var diff = i - wPos;
-            diff = diff - Math.round(diff / TOTAL) * TOTAL;
-            if(Math.abs(diff) > 2) {
-                if(slides[i].style.display !== 'none') slides[i].style.display = 'none';
-                continue;
-            }
-            if(slides[i].style.display === 'none') slides[i].style.display = '';
-            var sx = (_slideOff + diff * _slideW).toFixed(0);
-            var stx = 'translate3d(' + sx + 'px,0,0)';
-            if(stx !== _lastSlide[i]) { slides[i].style.transform = stx; _lastSlide[i] = stx; }
-        }
 
         /* ── Roue : tous les thumbs sur une ellipse, rotation liée à wPos ── */
         var baseAngle = -(wPos / TOTAL) * TAU - Math.PI / 2;
