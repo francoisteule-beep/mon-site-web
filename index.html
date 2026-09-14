@@ -1,1433 +1,1192 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Portfolio - Frantz</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body {
-            overflow: hidden; width: 100%; height: 100%;
-            overscroll-behavior-x: none;
-            background: #050505;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            text-transform: uppercase; font-weight: 500; color: white;
-            -webkit-font-smoothing: antialiased;
-        }
-        canvas.webgl {
-            position: fixed; top: 0; left: 0;
-            width: 100vw; height: 100vh; z-index: 1; outline: none;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frantz — Directeur artistique &amp; designer</title>
+<meta name="description" content="Portfolio de François Teulé (Frantz), directeur artistique et designer basé à Paris. Design graphique, motion 2D/3D, production audiovisuelle.">
+<meta name="theme-color" content="#050505">
+<meta property="og:title" content="Frantz — Directeur artistique & designer">
+<meta property="og:description" content="Design graphique, motion 2D/3D, production audiovisuelle. Paris.">
+<meta property="og:type" content="website">
+<style>
+/* ══════════════════════════════════════════════════════════
+   FRANTZ — index4
+   Mur de projets en 3D (CSS transforms, sans librairie),
+   défilement infini, accès direct au projet.
+   Vue LISTE conservée en repli accessible.
+══════════════════════════════════════════════════════════ */
 
-    /* ── LOADER ── */
-    #loader {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: #050505; z-index: 9999;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        transition: opacity 0.8s ease, visibility 0.8s ease;
-    }
-    #loader.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-    .loader-logo { font-size: 1.2rem; letter-spacing: 6px; margin-bottom: 60px;
-        opacity: 0; animation: fadeInLogo 0.8s ease forwards 0.3s; }
-    @keyframes fadeInLogo { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-    .loader-bar-container { width: 200px; height: 1px; background: rgba(255,255,255,0.15); position: relative; overflow: hidden; }
-    .loader-bar { position: absolute; top:0; left:0; height:100%; width:0%; background:white; transition:width 0.4s ease; }
-    .loader-percent { font-size:.7rem; letter-spacing:3px; margin-top:20px; color:rgba(255,255,255,0.4); }
-    .loader-label   { font-size:.65rem; letter-spacing:2px; margin-top:8px; color:rgba(255,255,255,0.2); min-height:16px; }
+:root{
+  --bg:#050505;
+  --fg:#ffffff;
+  --dim:rgba(255,255,255,.45);
+  --faint:rgba(255,255,255,.18);
+  --line:rgba(255,255,255,.12);
+  --ui:'Helvetica Neue',Helvetica,Arial,sans-serif;
+  --gut:clamp(16px,3.4vw,42px);
+  --head:58px;
+  --foot:82px;
+}
 
-    /* ── SOUND CONSENT ── */
-    #sound-consent {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: #050505; z-index: 10000;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        transition: opacity 0.8s ease, visibility 0.8s ease;
-    }
-    #sound-consent.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-    #consent-bg-video {
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        object-fit: cover; opacity: 0.18; pointer-events: none;
-    }
-    .consent-logo {
-        height: 150px; width: auto; margin-bottom: 30px;
-        opacity: 0; animation: fadeInLogo 0.8s ease forwards 0.3s;
-    }
-    .consent-question {
-        font-size: .52rem; letter-spacing: 3px; color: rgba(255,255,255,0.3);
-        text-transform: uppercase; margin-bottom: 44px;
-        opacity: 0; animation: fadeInLogo 0.8s ease forwards 0.65s;
-    }
-    .consent-btns {
-        display: flex; gap: 20px;
-        opacity: 0; animation: fadeInLogo 0.8s ease forwards 1s;
-    }
-    .consent-btn {
-        font-size: .52rem; letter-spacing: 3px; font-family: inherit;
-        text-transform: uppercase; cursor: pointer; background: none;
-        border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.45);
-        padding: 13px 30px; transition: border-color .25s, color .25s;
-    }
-    .consent-btn:hover { border-color: rgba(255,255,255,0.8); color: white; }
-    .consent-btn.primary { border-color: rgba(255,255,255,0.55); color: rgba(255,255,255,0.85); }
-    @media (max-width: 768px) {
-        .consent-sound-group { display: none !important; }
-        .consent-enter-group { display: flex !important; }
-    }
+*{box-sizing:border-box;margin:0;padding:0}
 
-    /* ── SWIPE HINT ── */
-    #swipe-hint {
-        position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
-        z-index: 200; display: flex; flex-direction: column; align-items: center; gap: 14px;
-        pointer-events: none; opacity: 0; transition: opacity 0.6s ease;
-    }
-    #swipe-hint.visible { opacity: 1; }
-    #swipe-hint.hidden  { opacity: 0; }
-    .hint-arrows { display: flex; align-items: center; gap: 24px; }
-    .hint-arrow-left svg, .hint-arrow-right svg { width:20px; height:20px; stroke:white; fill:none; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
-    .hint-hand { width:36px; height:36px; animation:swingHand 2.2s ease-in-out infinite; }
-    .hint-hand svg { width:36px; height:36px; fill:white; opacity:0.9; }
-    @keyframes swingHand { 0%{transform:translateX(0)} 20%{transform:translateX(-18px)} 40%{transform:translateX(0)} 60%{transform:translateX(18px)} 80%{transform:translateX(0)} 100%{transform:translateX(0)} }
-    .hint-arrow-left  { animation: pulseLeft  2.2s ease-in-out infinite; }
-    .hint-arrow-right { animation: pulseRight 2.2s ease-in-out infinite; }
-    @keyframes pulseLeft  { 0%{opacity:.2} 20%{opacity:1} 40%{opacity:.2} 100%{opacity:.2} }
-    @keyframes pulseRight { 0%{opacity:.2} 60%{opacity:.2} 70%{opacity:1} 80%{opacity:.2} 100%{opacity:.2} }
-    .hint-label { font-size:.6rem; letter-spacing:3px; color:rgba(255,255,255,0.35); }
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--fg);
+  font-family:var(--ui);font-weight:500;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+body.scrollable{overflow:auto}
 
-    /* ── SOUND HINT ── */
-    #sound-hint {
-        position: fixed; bottom: 100px; right: 45px;
-        z-index: 200; display: flex; flex-direction: column; align-items: center; gap: 8px;
-        pointer-events: none; opacity: 0; transition: opacity 0.6s ease;
-    }
-    #sound-hint.visible { opacity: 1; }
-    .sound-arrow { 
-        width: 20px; height: 20px; fill: none; stroke: white; 
-        stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
-        animation: pointDown 1.5s ease-in-out infinite;
-    }
-    @keyframes pointDown {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(10px); }
-    }
-    #sound-hint .hint-label { font-size: .5rem; letter-spacing: 2px; color: rgba(255,255,255,0.5); }
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+img,video{display:block;max-width:100%}
+:focus-visible{outline:1px solid var(--fg);outline-offset:3px}
 
-    /* ── HEADER ── */
-    #site-header {
-        position: fixed; top:0; left:0; width:100%;
-        display: flex; justify-content: space-between; align-items: flex-start;
-        padding: 30px 40px; font-size: 14px; letter-spacing: 1px;
-        z-index: 100; pointer-events: none; mix-blend-mode: difference;
-    }
-    #site-header * { pointer-events: auto; cursor: pointer; }
-    .logo { font-weight: bold; line-height: 1; }
+.label{font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+.skip{position:absolute;left:-9999px;top:0;padding:10px 16px;background:#fff;color:#000;z-index:999}
+.skip:focus{left:8px;top:8px}
 
-    /* ── SOUND TOGGLE ── */
-    #sound-toggle {
-        position: fixed; bottom:50px; right:50px;
-        background: none; border: none; color: white; cursor: pointer;
-        display: flex; align-items: center; justify-content: center;
-        opacity: 0.5; transition: opacity 0.3s; padding: 5px; z-index: 201;
-    }
-    #sound-toggle:hover { opacity: 1; }
-    #sound-toggle svg { width: 18px; height: 18px; fill: currentColor; }
+/* ── EN-TÊTE ─────────────────────────────────────────── */
+header.site{
+  position:fixed;top:0;left:0;right:0;height:var(--head);z-index:60;
+  display:flex;align-items:center;justify-content:space-between;gap:20px;
+  padding:0 var(--gut);
+  /* la barre est transparente : elle ne doit pas voler les clics
+     aux vignettes situées sous elle */
+  pointer-events:none;
+}
+header.site>*{pointer-events:auto}
+.brand{display:flex;align-items:baseline;gap:14px;min-width:0}
+.brand .name{font-size:.82rem;letter-spacing:.34em;text-transform:uppercase;white-space:nowrap}
+.brand .role{font-size:.58rem;letter-spacing:.12em;color:var(--dim);white-space:nowrap}
+@media (max-width:620px){.brand .role{display:none}}
+header.site nav{display:flex;gap:clamp(12px,2.4vw,26px);align-items:center}
+header.site nav button,header.site nav a{
+  font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);
+  transition:color .18s;padding:6px 0;border-bottom:1px solid transparent;
+}
+header.site nav button:hover,header.site nav a:hover,
+header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:var(--fg)}
+.hide-s{display:none}
+@media (min-width:760px){.hide-s{display:inline-block}}
 
-    /* ── BOUTON RETOUR ── */
-    #grid-back {
-        display: block;
-        margin-top: 10px;
-        font-size: .6rem;
-        letter-spacing: 3px;
-        color: rgba(255,255,255,0.45);
-        cursor: pointer;
-        padding: 5px 0;
-        border: none; background: none;
-        text-align: left;
-        white-space: nowrap;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity .4s ease, color .3s;
-        text-transform: uppercase;
-    }
-    #grid-back::before { content: '← '; }
-    #grid-back.visible { opacity: 1; pointer-events: auto; }
-    #grid-back:hover   { color: white; }
+/* ── SCÈNE ───────────────────────────────────────────── */
+#stage{position:fixed;inset:0;z-index:1}
 
-    .nav-links { transition: opacity 0.4s ease; }
-    body.project-open .nav-links { display:none; }
-    .nav-links a { color:white; text-decoration:none; margin:0 5px; opacity:.5; transition:opacity .3s; position:relative; }
-    .nav-links span { opacity:.3; }
-    .nav-links a::after {
-        content:''; position:absolute; bottom:-3px; left:0;
-        width:100%; height:1px; background:white;
-        transform:scaleX(0); transform-origin:left;
-        transition:transform 0.35s ease;
-    }
-    .nav-links a:hover, .nav-links a.active { opacity:1; }
-    .nav-links a:hover::after, .nav-links a.active::after { transform:scaleX(1); }
-    .info-link { color:white; text-decoration:none; margin-left:30px; opacity:.5; transition:opacity .3s; position:relative; }
-    .info-link::after {
-        content:''; position:absolute; bottom:-3px; left:0;
-        width:100%; height:1px; background:white;
-        transform:scaleX(0); transform-origin:left;
-        transition:transform 0.35s ease;
-    }
-    .info-link:hover, .info-link.active { opacity:1; }
-    .info-link:hover::after, .info-link.active::after { transform:scaleX(1); }
-    .time { font-variant-numeric:tabular-nums; width:140px; text-align:right; }
+#wall{
+  position:absolute;inset:0;
+  perspective:1250px;perspective-origin:50% 48%;
+  overflow:hidden;cursor:grab;touch-action:none;
+}
+#wall.drag{cursor:grabbing}
+/* Les tuiles sont reculées en Z, donc placées derrière le plan de leur
+   propre conteneur : sans ceci, #plane intercepte la souris partout sauf
+   au centre exact, et le survol ne répond nulle part ailleurs. */
+#plane{position:absolute;inset:0;transform-style:preserve-3d;pointer-events:none}
+/* Vignettage et voiles haut/bas : le centre reste lisible, les bords
+   s'éteignent, et la légende ne se pose jamais sur une vignette. */
+#wall::before,#wall::after{content:'';position:absolute;left:0;right:0;pointer-events:none;z-index:900}
+#wall::before{top:0;height:150px;background:linear-gradient(to bottom,rgba(5,5,5,.92),rgba(5,5,5,0))}
+#wall::after{bottom:0;height:190px;background:linear-gradient(to top,rgba(5,5,5,.94),rgba(5,5,5,0))}
+#vignette{position:absolute;inset:0;pointer-events:none;z-index:890;
+  background:radial-gradient(ellipse 78% 72% at 50% 46%,rgba(5,5,5,0) 38%,rgba(5,5,5,.55) 78%,rgba(5,5,5,.9) 100%)}
 
-    /* ── UI 3D ── */
-    #ui-layer { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; transition:opacity .5s; z-index:10; }
-    #btn-project {
-        position:absolute; bottom:15%; left:50%; transform:translateX(-50%) translateY(20px);
-        padding:15px 40px; background:rgba(255,255,255,0.1);
-        border:1px solid rgba(255,255,255,0.5); color:white;
-        font-family:inherit; font-size:1rem; letter-spacing:2px; text-transform:uppercase;
-        border-radius:50px; opacity:0; transition:.5s; backdrop-filter:blur(5px);
-        cursor:pointer; pointer-events:auto;
-    }
-    #btn-project.visible { opacity:1; transform:translateX(-50%) translateY(0); }
-    #btn-project:hover { background:white; color:black; }
-    #project-preview {
-        position:absolute; top:48%; left:60%; transform:translateY(-50%) translateX(20px);
-        font-size:1.5rem; letter-spacing:1px; opacity:0; transition:.5s; width:300px; line-height:1.2;
-    }
-    #project-preview.visible { opacity:1; transform:translateY(-50%) translateX(0); }
+.tile{
+  position:absolute;top:0;left:0;
+  transform-origin:50% 50%;
+  background:none;border:none;padding:0;overflow:visible;
+  text-align:left;
+  pointer-events:auto;
+}
+.tframe{
+  display:block;width:100%;height:100%;position:relative;overflow:hidden;
+  background:#0c0c0c;border:1px solid rgba(255,255,255,.08);
+  transition:border-color .2s ease,box-shadow .2s ease;
+}
+.tframe img{width:100%;height:100%;object-fit:cover;opacity:.9;transition:opacity .2s ease}
+.tframe .ph{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  padding:10px;text-align:center;
+  font-size:.52rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.22);
+}
+/* Nom affiché sous la vignette, au survol seulement */
+.tlabel{
+  position:absolute;top:100%;left:-20%;right:-20%;margin-top:9px;
+  text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;
+  color:rgba(255,255,255,.92);text-shadow:0 1px 10px rgba(0,0,0,.9);
+  opacity:0;transform:translateY(-3px);
+  transition:opacity .18s ease,transform .18s ease;pointer-events:none;
+}
+.tlabel em{font-style:normal;color:rgba(255,255,255,.5)}
+@media (hover:hover){
+  .tile:hover .tframe{border-color:rgba(255,255,255,.85);box-shadow:0 0 0 1px rgba(255,255,255,.3)}
+  .tile:hover .tframe img{opacity:1}
+}
+.tile:hover .tlabel,.tile:focus-visible .tlabel{opacity:1;transform:translateY(0)}
+.tile:focus-visible .tframe{border-color:rgba(255,255,255,.85)}
+.tile.soon .tframe{filter:grayscale(1)}
+@media (hover:none){ .tlabel{opacity:1;transform:none} }
 
-    /* ── PAGES génériques ── */
-    .page-section {
-        position:fixed; top:0; left:0; width:100%; height:100%;
-        background:#050505; z-index:50; display:flex; flex-direction:column;
-        padding:120px 40px 40px 40px;
-        opacity:0; pointer-events:none; transition:opacity .5s ease; overflow-y:auto;
-        will-change: opacity;
-    }
-    .page-section.active { opacity:1; pointer-events:auto; }
-    .index-item { display:flex; justify-content:space-between; border-bottom:1px solid #333; padding:20px 0; font-size:1.2rem; cursor:pointer; transition:.3s; }
-    .index-item:hover { color:#aaa; border-color:#fff; }
-    /* ── PAGE INFO ── */
-    #page-info {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr;
-        padding: 0 !important;
-        overflow: hidden !important;
-    }
-    #info-left {
-        display: flex; flex-direction: column; justify-content: space-between;
-        padding: 120px 50px 60px 50px;
-        border-right: 1px solid rgba(255,255,255,0.07);
-    }
-    #info-bio {
-        display: flex; grid-template-columns: 1fr 1fr; gap: 32px;
-        margin: 0;
-    }
-    #info-bio p {
-        font-size: clamp(1.1rem, 1.9vw, 2rem);
-        font-weight: 700; line-height: 1.13; letter-spacing: -0.01em;
-        color: white; margin: 0;
-    }
-    #info-clients {
-        margin-top: 48px;
-    }
-    #info-clients h3 {
-        font-size: .5rem; letter-spacing: 5px; color: rgba(255,255,255,0.25);
-        margin-bottom: 24px;
-    }
-    .clients-grid {
-        display: flex; flex-wrap: wrap; gap: 20px 28px; align-items: center;
-    }
-    .clients-grid img {
-        width: 90px; height: 36px;
-        object-fit: contain; object-position: center;
-        filter: none;
-        opacity: 0.35;
-        transition: opacity .3s;
-    }
-    .clients-grid img:hover { opacity: 0.75; }
-    #info-meta {
-        font-size: .56rem; letter-spacing: 4px;
-        color: rgba(255,255,255,0.3);
-        display: flex; gap: 32px;
-    }
-    #info-meta a { color: inherit; text-decoration: none; transition: color .2s; }
-    #info-meta a:hover { color: white; }
-    #info-right {
-        position: relative; overflow: hidden;
-    }
-    #info-cube-canvas {
-        position: absolute; inset: 0; width: 100%; height: 100%;
-        display: block;
-    }
+/* ── PIED : légende, filtres, compteur ───────────────── */
+#foot{
+  position:fixed;left:0;right:0;bottom:0;z-index:60;
+  height:var(--foot);padding:0 var(--gut);
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:16px;
+  padding-bottom:18px;pointer-events:none;
+}
+#foot>*{pointer-events:auto}
+#hint{font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.3)}
+#count{font-size:.55rem;letter-spacing:.18em;text-align:right;color:rgba(255,255,255,.3);font-variant-numeric:tabular-nums}
+#center{display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0}
+.filters{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
+.chip{
+  font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;
+  padding:6px 12px;border-radius:999px;color:rgba(255,255,255,.42);transition:.18s;
+}
+.chip:hover{color:var(--fg)}
+.chip[aria-pressed="true"]{color:#050505;background:var(--fg)}
+.chip .n{opacity:.5;margin-left:5px}
+@media (max-width:720px){
+  #hint,#count{display:none}
+  #foot{grid-template-columns:1fr}
+  #center{align-items:center}
+}
 
-    /* ── PAGE PHOTO WHEEL ── */
-    #page-photo { padding: 0 !important; overflow: hidden !important; }
+/* ── VUE LISTE ───────────────────────────────────────── */
+#listwrap{
+  position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;
+  padding:calc(var(--head) + 26px) var(--gut) calc(var(--foot) + 40px);
+}
+#listwrap.off{opacity:0}
+.lintro{padding:clamp(10px,4vh,44px) 0 clamp(26px,5vh,50px);border-bottom:1px solid var(--line)}
+.lintro h1{font-size:clamp(1.6rem,5vw,3.4rem);line-height:1.04;letter-spacing:-.02em;
+  text-transform:uppercase;font-weight:600;max-width:16ch}
+.lintro p{margin-top:18px;max-width:46ch;font-size:.92rem;line-height:1.6;color:var(--dim);font-weight:400}
+.row{
+  width:100%;display:grid;align-items:center;
+  grid-template-columns:44px 1fr auto auto 24px;gap:16px;
+  padding:18px 0;border-bottom:1px solid var(--line);
+  text-align:left;transition:padding-left .28s ease;
+}
+@media (hover:hover){.row:hover{padding-left:14px}}
+.row .num{font-size:.56rem;letter-spacing:.14em;color:var(--faint)}
+.row .ttl{font-size:clamp(.98rem,2.4vw,1.5rem);line-height:1.15;text-transform:uppercase;letter-spacing:-.01em}
+.row .cat,.row .yr{font-size:.56rem;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.row .arw{font-size:.85rem;color:var(--faint);transition:transform .28s ease,color .2s}
+@media (hover:hover){.row:hover .arw{transform:translateX(5px);color:var(--fg)}}
+.row .bts{font-size:.52rem;letter-spacing:.16em;color:var(--faint);text-transform:uppercase}
+.row.soon{opacity:.3;cursor:default}
+@media (max-width:720px){
+  .row{grid-template-columns:32px 1fr auto;gap:12px}
+  .row .yr,.row .arw{display:none}
+}
 
-    /* ── Carrousel plein écran ── */
-    #photo-carousel { position: absolute; inset: 0; z-index: 1; overflow: hidden; }
-    .carousel-slide {
-        position: absolute; top: 0; left: 0;
-        width: calc(100% / 3); height: 100%;
-        overflow: hidden;
-        will-change: transform;
-        transition: opacity 0.15s ease;
-    }
-    #photo-carousel.is-scrolling .carousel-slide { opacity: 0; pointer-events: none; }
-    .carousel-slide img {
-        width: 100%; height: 100%;
-        object-fit: cover; display: block;
-        pointer-events: none; user-select: none; -webkit-user-drag: none;
-    }
+/* ── APERÇU QUI SUIT LA SOURIS (vue liste) ───────────── */
+#peek{
+  position:fixed;z-index:55;width:290px;aspect-ratio:16/10;
+  pointer-events:none;overflow:hidden;
+  background:#0c0c0c;border:1px solid var(--line);
+  opacity:0;transform:translate(-50%,-50%) scale(.96);
+  transition:opacity .22s ease,transform .22s ease;
+}
+#peek.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#peek img,#peek video{width:100%;height:100%;object-fit:cover}
+@media (hover:none),(max-width:900px){#peek{display:none}}
+@media (prefers-reduced-motion:reduce){#peek{transition:none}}
 
-    /* ── Infos ── */
-    #photo-info-panel {
-        position: absolute; bottom: 52px; left: 50px;
-        z-index: 20; pointer-events: none;
-    }
-    #photo-info-name {
-        font-size: clamp(.65rem, 1.1vw, .88rem);
-        letter-spacing: 3px; color: rgba(255,255,255,0.85); margin-bottom: 7px;
-    }
-    #photo-info-meta { font-size: .52rem; letter-spacing: 2px; color: rgba(255,255,255,0.32); }
-    #photo-category-label {
-        position: absolute; top: 108px; right: 50px;
-        font-size: .52rem; letter-spacing: 5px;
-        color: rgba(255,255,255,0.22); z-index: 20; pointer-events: none;
-    }
+/* ── FONDUS ENTRE LES VUES ───────────────────────────── */
+#wall,#listwrap{transition:opacity .3s ease,visibility 0s linear 0s}
+#wall.off,#listwrap.off{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .3s ease,visibility 0s linear .3s}
 
-    /* ── Roue de vignettes ── */
-    #photo-wheel-area { position: absolute; inset: 0; z-index: 10; overflow: hidden; pointer-events: none; }
-    .wheel-thumb {
-        position: absolute; left: 0; top: 0;
-        width: 52px; height: 70px;
-        overflow: hidden; cursor: pointer;
-        pointer-events: auto;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.55);
-        opacity: 0.6;
-        transition: opacity 0.2s ease, outline 0.2s ease;
-        will-change: transform;
-    }
-    .wheel-thumb img {
-        position: absolute; inset: 0; width: 100%; height: 100%;
-        object-fit: cover; display: block;
-        pointer-events: none; user-select: none; -webkit-user-drag: none;
-    }
-    .wheel-thumb.is-active { outline: 1px solid rgba(255,255,255,0.75); opacity: 1; }
+/* ── PANNEAUX (projet / infos) ───────────────────────── */
+.panel{
+  position:fixed;inset:0;z-index:90;background:var(--bg);
+  overflow-y:auto;overscroll-behavior:contain;
+  opacity:0;visibility:hidden;transform:translateY(8px);
+  transition:opacity .32s ease,transform .32s ease,visibility 0s linear .32s;
+}
+.panel.open{opacity:1;visibility:visible;transform:none;
+  transition:opacity .32s ease,transform .32s ease,visibility 0s linear 0s}
+.panel[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){
+  .panel,#wall,#listwrap{transition:none}
+  .panel{transform:none}
+}
+.phead{
+  position:sticky;top:0;z-index:5;height:var(--head);
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:0 var(--gut);
+  background:rgba(5,5,5,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);
+}
+.phead .back{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);transition:color .18s}
+.phead .back:hover{color:var(--fg)}
+.phead .now{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw}
+.pbody{padding:clamp(26px,5vh,54px) var(--gut) 110px;max-width:1500px;margin:0 auto}
+.pbody h2{font-size:clamp(1.5rem,4.6vw,3rem);line-height:1.05;letter-spacing:-.02em;
+  text-transform:uppercase;font-weight:600;max-width:18ch}
+.pmeta{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px 22px}
+.stage-media{
+  margin-top:clamp(22px,4vh,38px);background:#0c0c0c;border:1px solid var(--line);
+  min-height:min(50vh,400px);display:flex;align-items:center;justify-content:center;
+}
+.stage-media video{width:100%;max-height:78vh;object-fit:contain;background:#000}
+.stage-media img{width:100%;max-height:80vh;object-fit:contain;background:#000}
 
-    /* ── PANNEAU PROJET (template unique) ── */
-    #project-panel { position:fixed; top:0; left:0; width:100%; height:100%; z-index:105; background:#000; transform:translateY(100%); transition:transform .8s cubic-bezier(.86,0,.07,1); overflow:hidden; }
-    #project-panel.open { transform:translateY(0); }
-    #project-inner { position:absolute; top:0; left:0; width:100%; height:100%; overflow-y:auto; overflow-x:hidden; scroll-behavior:smooth; }
-    #project-hero { position:relative; height:100vh; flex-shrink:0; }
-    #project-video-player { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; }
-    #project-controls {
-        position:absolute; bottom:50px; left:50%; transform:translateX(-50%);
-        display:flex; gap:16px; align-items:center; z-index:2;
-    }
-    #project-controls button {
-        background:rgba(0,0,0,0.45); border:1px solid rgba(255,255,255,0.35); color:white;
-        padding:10px 22px; cursor:pointer; font-family:inherit; letter-spacing:2px;
-        font-size:.65rem; text-transform:uppercase; transition:.3s; backdrop-filter:blur(8px);
-    }
-    #project-controls button:hover { background:rgba(255,255,255,0.15); border-color:rgba(255,255,255,0.7); }
-    #project-controls button.active { border-color:white; background:rgba(255,255,255,0.1); }
-    #project-title-display {
-        position:absolute; top:32px; left:50%; transform:translateX(-50%);
-        font-size:.65rem; letter-spacing:4px; color:rgba(255,255,255,0.4);
-        z-index:2; white-space:nowrap; pointer-events:none;
-    }
-    #project-scroll-hint {
-        position:absolute; bottom:18px; left:50%; transform:translateX(-50%);
-        font-size:.55rem; letter-spacing:3px; color:rgba(255,255,255,0.3);
-        z-index:2; animation:projScrollPulse 2s ease-in-out infinite; pointer-events:none;
-    }
-    @keyframes projScrollPulse { 0%,100%{opacity:.3;transform:translateX(-50%) translateY(0)} 50%{opacity:.7;transform:translateX(-50%) translateY(6px)} }
-    #project-more { background:#0a0a0a; padding:80px 40px 80px; min-height:60vh; }
-    #project-more h2 { font-size:.65rem; letter-spacing:5px; color:rgba(255,255,255,0.3); margin-bottom:40px; }
-    #project-more-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
-    .proj-more-item { aspect-ratio:16/9; object-fit:cover; width:100%; background:#111; display:block; }
-    #project-close-btn {
-        position:absolute; top:24px; left:40px;
-        background:transparent; border:1px solid rgba(255,255,255,0.4); color:white;
-        cursor:pointer; font-family:inherit; font-size:.6rem; letter-spacing:3px;
-        text-transform:uppercase; transition:.3s; z-index:3;
-        padding:8px 20px; border-radius:30px;
-    }
-    #project-close-btn:hover { background:white; color:black; border-color:white; }
+/* Description et crédits */
+.pcols{
+  margin-top:clamp(40px,6vh,72px);
+  display:grid;gap:clamp(28px,4vw,64px);grid-template-columns:1fr;
+  align-items:start;
+}
+@media (min-width:900px){.pcols{grid-template-columns:1.35fr 1fr}}
+.pcols h3{font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:18px}
+.ptext{
+  font-size:clamp(.92rem,1.7vw,1.08rem);line-height:1.65;font-weight:400;
+  max-width:58ch;color:rgba(255,255,255,.88);white-space:pre-line;
+}
+.credits{display:grid;grid-template-columns:auto 1fr;gap:9px 22px;align-items:baseline;margin:0}
+.credits dt{
+  font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);
+  margin:0;white-space:nowrap;
+}
+.credits dd{margin:0;font-size:.82rem;letter-spacing:.03em;color:rgba(255,255,255,.92)}
+@media (max-width:520px){
+  .credits{grid-template-columns:1fr;gap:2px 0}
+  .credits dd{margin-bottom:12px}
+}
 
+.more{margin-top:clamp(44px,7vh,80px)}
+.more h3{font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.more .sub{font-size:.55rem;letter-spacing:.14em;color:var(--faint);text-transform:uppercase;margin-bottom:20px}
+.mgrid{display:grid;gap:clamp(8px,1.2vw,14px);grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.mcell{position:relative;aspect-ratio:16/10;background:#0c0c0c;border:1px solid var(--line);overflow:hidden;padding:0}
+.mcell img,.mcell video{width:100%;height:100%;object-fit:cover}
+.mcell .tag{
+  position:absolute;left:8px;bottom:7px;font-size:.48rem;letter-spacing:.16em;
+  text-transform:uppercase;color:rgba(255,255,255,.7);text-shadow:0 1px 6px rgba(0,0,0,.8);
+}
+@media (hover:hover){.mcell::after{content:'';position:absolute;inset:0;background:rgba(5,5,5,.2);transition:opacity .25s}
+  .mcell:hover::after{opacity:0}}
 
+.nextrow{margin-top:clamp(44px,7vh,80px);padding-top:24px;border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;align-items:center;gap:16px}
+.nextrow b{font-size:clamp(.95rem,2.3vw,1.45rem);text-transform:uppercase;font-weight:500;letter-spacing:-.01em}
 
-    /* ══════════════════════════════════
-       MOBILE (≤768px)
-    ══════════════════════════════════ */
-    @media (max-width:768px) {
+/* Infos — même composition que la première version */
+.info-body{padding-top:clamp(40px,9vh,90px)}
+.ifoot{margin-top:clamp(50px,9vh,100px);padding-top:24px;border-top:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between}
+.igrid{display:grid;gap:clamp(30px,5vw,70px);grid-template-columns:1fr}
+@media (min-width:900px){.igrid{grid-template-columns:1.1fr 1fr}}
+.igrid h3{font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:20px}
+.bio{font-size:clamp(1rem,2.1vw,1.35rem);line-height:1.45;max-width:34ch;font-weight:400}
+.ilinks{list-style:none;margin-top:26px;display:flex;flex-direction:column;gap:10px}
+.ilinks a{font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;
+  border-bottom:1px solid var(--faint);padding-bottom:3px;display:inline-block;transition:border-color .18s}
+.ilinks a:hover{border-color:var(--fg)}
+.logos{display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:24px 18px;align-items:center}
+.logos img{width:100%;height:28px;object-fit:contain;object-position:left center;
+  filter:brightness(0) invert(1);opacity:.45;transition:opacity .22s}
+.logos img:hover{opacity:1}
 
-        /* ── Éléments desktop cachés ── */
-        canvas.webgl,
-        #swipe-hint,
-        #sound-hint,
-        #ui-layer,
-        .nav-links,
-        .time,
-        #grid-back,
-        #project-preview,
-        #photo-carousel,
-        #photo-wheel-area,
-        #photo-info-panel,
-        #photo-category-label { display:none !important; }
+/* Loupe plein écran pour les coulisses */
+#zoom{position:fixed;inset:0;z-index:120;background:rgba(4,4,4,.96);
+  display:flex;align-items:center;justify-content:center;padding:clamp(16px,4vw,48px);
+  opacity:0;visibility:hidden;transition:opacity .25s ease,visibility 0s linear .25s}
+#zoom.open{opacity:1;visibility:visible;transition:opacity .25s ease,visibility 0s linear 0s}
+#zoom[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){#zoom{transition:none}}
+#zoom img,#zoom video{max-width:100%;max-height:88vh;object-fit:contain}
+#zoom .close{position:absolute;top:18px;right:var(--gut);font-size:.58rem;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--dim)}
+#zoom .close:hover{color:var(--fg)}
 
-        /* ── Annule le overflow:hidden du desktop ── */
-        html, body {
-            overflow: auto !important;
-            height: auto !important;
-        }
-
-        /* ── Header mobile ── */
-        #site-header { padding:16px 20px; font-size:12px; align-items:center; }
-
-        /* ── Burger ── */
-        #burger-btn {
-            display: flex; flex-direction: column; justify-content: center; gap: 5px;
-            background: none; border: none; cursor: pointer; padding: 4px; z-index: 201;
-        }
-        #burger-btn span {
-            display: block; width: 22px; height: 1.5px; background: white;
-            transition: transform .35s ease, opacity .35s ease;
-        }
-        body.menu-open #burger-btn span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
-        body.menu-open #burger-btn span:nth-child(2) { opacity: 0; }
-        body.menu-open #burger-btn span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
-
-        /* ── Drawer menu ── */
-        #mobile-drawer {
-            position: fixed; top: 0; right: 0; width: 75vw; max-width: 280px; height: 100%;
-            background: #0a0a0a; z-index: 200;
-            display: flex; flex-direction: column; justify-content: center;
-            padding: 60px 40px; gap: 32px;
-            transform: translateX(100%); transition: transform .4s cubic-bezier(.86,0,.07,1);
-        }
-        body.menu-open #mobile-drawer { transform: translateX(0); }
-        #mobile-drawer a {
-            font-size: .7rem; letter-spacing: 4px; color: rgba(255,255,255,0.45);
-            text-decoration: none; font-weight: 500; transition: color .2s;
-        }
-        #mobile-drawer a:hover, #mobile-drawer a.active { color: white; }
-        #drawer-overlay {
-            display: none; position: fixed; inset: 0; z-index: 199; background: rgba(0,0,0,0.5);
-        }
-        body.menu-open #drawer-overlay { display: block; }
-
-        /* ── Pages mobiles — annule le positionnement fixed du desktop ── */
-        .page-section {
-            position: relative !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-            display: none !important;
-            height: auto !important;
-            min-height: 100vh;
-            padding: 80px 20px 60px !important;
-            overflow-y: visible !important;
-        }
-        .page-section.mob-active {
-            display: flex !important;
-            flex-direction: column !important;
-            opacity: 1 !important;
-            pointer-events: auto !important;
-        }
-        /* La section vidéo mobile n'est pas une page-section */
-        #mobile-video-section {
-            position: relative !important;
-            min-height: 100vh;
-            padding: 80px 20px 60px !important;
-        }
-        #mobile-video-section.mob-active { display: block !important; }
-
-        /* ── Section vidéo mobile ── */
-        #mobile-video-list { display: flex; flex-direction: column; gap: 20px; }
-        .mobile-proj-card {
-            background: #111; border-radius: 4px; overflow: hidden; cursor: pointer;
-            position: relative;
-        }
-        .mobile-proj-card video {
-            width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block;
-            pointer-events: none;
-        }
-        .mobile-proj-card-title {
-            padding: 14px 16px; font-size: .65rem; letter-spacing: 3px;
-            color: rgba(255,255,255,0.7);
-        }
-        .mobile-proj-card-cta {
-            position: absolute; bottom: 52px; right: 12px;
-            font-size: .5rem; letter-spacing: 2px; color: rgba(255,255,255,0.4);
-            border: 1px solid rgba(255,255,255,0.2); padding: 6px 14px; border-radius: 20px;
-        }
-
-        /* ── Galerie photo mobile ── */
-        #mobile-photo-cats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
-        .mobile-cat-btn {
-            font-size: .55rem; letter-spacing: 2px; padding: 7px 16px;
-            border: 1px solid rgba(255,255,255,0.25); background: none; color: rgba(255,255,255,0.5);
-            cursor: pointer; font-family: inherit; transition: .2s; border-radius: 20px;
-            text-transform: uppercase;
-        }
-        .mobile-cat-btn.active { border-color: white; color: white; }
-        #mobile-photo-cats { display: none !important; }
-        #mobile-photo-grid {
-            display: flex; flex-direction: column; gap: 6px;
-        }
-        .mobile-photo-wrap {
-            position: relative; overflow: hidden; border-radius: 2px;
-        }
-        .mobile-photo-item {
-            aspect-ratio: 2/3; object-fit: cover; width: 100%; display: block;
-        }
-        .mobile-photo-info {
-            position: absolute; bottom: 0; left: 0; right: 0;
-            padding: 28px 14px 14px;
-            background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
-            transform: translateY(100%);
-            transition: transform 0.35s ease;
-            pointer-events: none;
-        }
-        .mobile-photo-wrap.info-active .mobile-photo-info {
-            transform: translateY(0);
-        }
-        .mobile-photo-info-name {
-            font-size: .62rem; letter-spacing: 2px; color: #fff;
-            text-transform: uppercase; margin-bottom: 4px;
-        }
-        .mobile-photo-info-meta {
-            font-size: .5rem; letter-spacing: 1.5px; color: rgba(255,255,255,0.45);
-            text-transform: uppercase;
-        }
-
-        /* ── Info page mobile ── */
-        #page-info { display: flex !important; flex-direction: column !important; }
-        #info-right { display: none !important; }
-        #info-left {
-            padding: 80px 24px 60px !important;
-            border-right: none !important;
-            gap: 40px;
-            display: flex; flex-direction: column;
-        }
-        #info-bio p { font-size: 1.15rem !important; line-height: 1.35 !important; }
-        #info-clients { margin-top: 0 !important; }
-        #info-clients h3 { margin-bottom: 20px; }
-        .clients-grid { gap: 16px 20px; }
-        .clients-grid img { width: 60px; height: 24px; }
-        #info-meta {
-            flex-direction: column; gap: 18px;
-            padding-top: 24px;
-            border-top: 1px solid rgba(255,255,255,0.07);
-        }
-        #info-meta a { font-size: .6rem; letter-spacing: 3px; }
-
-        /* ── Panneau projet mobile ── */
-        #project-close-btn { top: 16px; left: 16px; }
-        #project-controls { bottom: 24px; gap: 8px; }
-        #project-controls button { padding: 8px 14px; font-size: .55rem; }
-        /* Cacher plein écran sur mobile */
-        #proj-fs-btn { display: none !important; }
-
-        /* ── Cacher son ambiant sur mobile ── */
-        #sound-toggle, #sound-hint { display: none !important; }
-    }
-
-    /* Desktop : cacher les éléments mobile */
-    @media (min-width:769px) {
-        #burger-btn { display: none; }
-        #mobile-drawer { display: none !important; }
-        #drawer-overlay { display: none !important; }
-        #mobile-video-list { display: none; }
-        #mobile-photo-cats { display: none; }
-        #mobile-photo-grid { display: none; }
-    }
+.empty{padding:60px 0;color:var(--dim);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase}
+#boot{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center}
+#boot[hidden]{display:none}
+#boot span{font-size:.58rem;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.3)}
 </style>
-
 </head>
 <body>
 
-<audio id="bg-static-audio" loop>
-    <source src="/Static.wav" type="audio/wav">
-</audio>
+<a class="skip" href="#liste">Aller à la liste des projets</a>
 
-
-<div id="sound-consent">
-    <video id="consent-bg-video" autoplay muted loop playsinline>
-        <source src="https://assets.frantzimann.org/loader-screen.mp4" type="video/mp4">
-    </video>
-    <img class="consent-logo" src="https://assets.frantzimann.org/signature.svg" alt="FRANTZ" style="filter: brightness(0) invert(1);">
-    <div class="consent-question">Choisissez votre expérience</div>
-    <!-- Desktop : avec ou sans son -->
-    <div class="consent-btns consent-sound-group">
-        <button class="consent-btn primary" id="consent-sound-on">AVEC SON</button>
-        <button class="consent-btn" id="consent-sound-off">SANS SON</button>
-    </div>
-    <!-- Mobile : simple entrée -->
-    <div class="consent-btns consent-enter-group" style="display:none">
-        <button class="consent-btn primary" id="consent-enter">ENTRER</button>
-    </div>
-</div>
-
-<div id="loader">
-    <div class="loader-logo">FRANTZ</div>
-    <div class="loader-bar-container"><div class="loader-bar" id="loader-bar"></div></div>
-    <div class="loader-percent" id="loader-percent">0%</div>
-    <div class="loader-label" id="loader-label">INITIALISATION</div>
-</div>
-
-<div id="swipe-hint">
-    <div class="hint-arrows">
-        <div class="hint-arrow-left"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
-        <div class="hint-hand"><svg viewBox="0 0 64 64"><path d="M30 8 C30 5 34 5 34 8 L34 32 C34 32 40 30 40 36 C40 44 36 56 28 56 C20 56 16 48 16 40 L16 28 C16 25 20 25 20 28 L20 36 C20 36 22 34 22 28 L22 12 C22 9 26 9 26 12 L26 28 C26 28 28 26 28 20 L28 8 C28 5 30 5 30 8 Z" opacity="0.85"/></svg></div>
-        <div class="hint-arrow-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
-    </div>
-    <div class="hint-label">NAVIGUER</div>
-</div>
-
-<div id="sound-hint">
-    <div class="hint-label">SON</div>
-    <div class="sound-arrow"><svg viewBox="0 0 24 24"><path d="M7 7l5 5 5-5M12 12v10"/></svg></div>
-</div>
-
-<canvas class="webgl"></canvas>
-
-<!-- ── DRAWER MOBILE ── -->
-<div id="drawer-overlay"></div>
-<div id="mobile-drawer">
-    <a id="mob-nav-video" class="active">VIDÉO</a>
-    <a id="mob-nav-photo">PHOTO</a>
-    <a id="mob-nav-info">INFO</a>
-</div>
-
-<header id="site-header">
-    <div class="header-left">
-        <div class="logo" id="main-logo">FRANTZ</div>
-        <button id="grid-back">RETOUR</button>
-    </div>
-    <nav class="navigation">
-        <div class="nav-links">
-            <a id="nav-index"></a>
-            <a id="nav-selects" class="active">VIDÉO</a> <span>/</span>
-            <a id="nav-photo">PHOTO</a>
-            <a id="nav-info" class="info-link">INFO</a>
-            <button id="sound-toggle" title="Activer/Couper le son">
-                <svg id="icon-sound-off" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77zM3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" opacity=".3"/><path d="M4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
-                <svg id="icon-sound-on" style="display:none;" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
-            </button>
-        </div>
-    </nav>
-    <div class="time" id="clock">00:00:00 (GMT)</div>
-    <button id="burger-btn" aria-label="Menu">
-        <span></span><span></span><span></span>
-    </button>
+<header class="site">
+  <div class="brand">
+    <button class="name" id="home">Frantz</button>
+    <span class="role">Directeur artistique + designer</span>
+  </div>
+  <nav>
+    <button id="nav-wall" aria-pressed="true">Mur</button>
+    <button id="nav-list" aria-pressed="false">Liste</button>
+    <button id="nav-info">Infos</button>
+    <a class="hide-s" href="mailto:contact.frantz75@gmail.com">Contact</a>
+  </nav>
 </header>
 
-<div id="ui-layer">
-    <button id="btn-project">DÉCOUVRIR LE PROJET</button>
-    <div id="project-preview">NOM DU PROJET</div>
+<main id="stage">
+  <section id="wall" aria-label="Mur de projets, faire défiler ou glisser">
+    <div id="plane"></div>
+    <div id="vignette"></div>
+  </section>
+
+  <section id="listwrap" hidden aria-label="Liste des projets">
+    <div class="lintro" id="liste">
+      <h1>Directeur artistique &amp; designer</h1>
+      <p>Design graphique, motion 2D et 3D, production audiovisuelle. Basé à Paris. Sélection de projets réalisés en agence, en studio et en indépendant.</p>
+    </div>
+    <div id="list"></div>
+  </section>
+</main>
+
+<div id="foot">
+  <div id="hint">Molette ou glisser : défiler &nbsp;·&nbsp; Survol : nom du projet</div>
+  <div id="center">
+    <div class="filters" id="filters" role="group" aria-label="Filtrer"></div>
+  </div>
+  <div id="count">↓ 0000</div>
 </div>
 
-<!-- ── SECTION VIDÉO MOBILE ── -->
-<div id="mobile-video-section" class="page-section" style="display:none;">
-    <div id="mobile-video-list"></div>
+<!-- ── PANNEAU PROJET ── -->
+<div class="panel" id="view" hidden role="dialog" aria-modal="true" aria-labelledby="v-title">
+  <div class="phead">
+    <button class="back" id="v-back">← Retour</button>
+    <span class="now" id="v-now"></span>
+  </div>
+  <div class="pbody">
+    <h2 id="v-title"></h2>
+    <div class="pmeta"><span class="label" id="v-cat"></span><span class="label" id="v-year"></span></div>
+    <div class="stage-media" id="v-stage"></div>
+
+    <div class="pcols" id="v-about" hidden>
+      <div class="pdesc" id="v-desc-wrap" hidden>
+        <h3>Le projet</h3>
+        <div class="ptext" id="v-desc"></div>
+      </div>
+      <div class="pcred" id="v-cred-wrap" hidden>
+        <h3>Crédits</h3>
+        <dl class="credits" id="v-credits"></dl>
+      </div>
+    </div>
+
+    <div class="more" id="v-more" hidden>
+      <h3>En coulisses</h3>
+      <div class="sub" id="v-subcount"></div>
+      <div class="mgrid" id="v-mgrid"></div>
+    </div>
+    <div class="nextrow" id="v-nextrow" hidden>
+      <span class="label">Projet suivant</span>
+      <button id="v-next"><b></b></button>
+    </div>
+  </div>
 </div>
 
-<section id="page-index" class="page-section">
-    <ul class="index-list">
-        <li class="index-item"><span>01. PROJET AUTOMOBILE</span><span>2023</span></li>
-        <li class="index-item"><span>02. ARCHITECTURE MODERNE</span><span>2023</span></li>
-        <li class="index-item"><span>03. OBJECTIF N1 ADIDAS</span><span>2026</span></li>
-        <li class="index-item"><span>04. ANIMATION ABSTRAITE</span><span>2022</span></li>
-        <li class="index-item"><span>05. COURT MÉTRAGE</span><span>2021</span></li>
-    </ul>
-</section>
-
-<section id="page-photo" class="page-section">
-    <div id="photo-carousel"></div>
-    <div id="photo-wheel-area"></div>
-    <div id="photo-info-panel">
-        <div id="photo-info-name"></div>
-        <div id="photo-info-meta"></div>
+<!-- ── PANNEAU INFOS ── -->
+<div class="panel" id="infoview" hidden role="dialog" aria-modal="true" aria-labelledby="i-title">
+  <div class="phead">
+    <button class="back" id="i-back">← Retour</button>
+    <span class="now">Infos</span>
+  </div>
+  <div class="pbody info-body">
+    <div class="igrid">
+      <div>
+        <h3 id="i-title">Infos</h3>
+        <p class="bio">Directeur artistique et designer basé à Paris. Je travaille l’image de la direction artistique au montage final : identité, design graphique, motion 2D et 3D, production audiovisuelle.</p>
+        <ul class="ilinks">
+          <li><a href="mailto:contact.frantz75@gmail.com">contact.frantz75@gmail.com</a></li>
+          <li><a href="https://www.linkedin.com/in/fran%C3%A7ois-teul%C3%A9/" target="_blank" rel="noopener">LinkedIn</a></li>
+          <li><a href="https://www.instagram.com/_fran.tl/" target="_blank" rel="noopener">Instagram</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Clients</h3>
+        <div class="logos" id="logos"></div>
+      </div>
     </div>
-    <div id="photo-category-label"></div>
-    <!-- Galerie mobile (visible uniquement sur mobile) -->
-    <div id="mobile-photo-cats"></div>
-    <div id="mobile-photo-grid"></div>
-</section>
-
-<section id="page-info" class="page-section">
-    <div id="info-left">
-        <div id="info-bio">
-            <p>Directeur Artistique & Designer basé à Paris. Design graphique, motion 2D/3D, production audiovisuelle.</p>        </div>
-        <div id="info-clients">
-            <h3>CLIENTS</h3>
-            <div class="clients-grid" id="clients-grid-dynamic"></div>
-        </div>
-        <div id="info-meta">
-            <a href="mailto:contact.frantz75@gmail.com">CONTACT.FRANTZ75@GMAIL.COM</a>
-            <a href="https://www.linkedin.com/in/fran%C3%A7ois-teul%C3%A9/" target="_blank">LINKEDIN</a>
-            <a href="https://www.instagram.com/_fran.tl/" target="_blank">INSTAGRAM</a>
-        </div>
+    <div class="ifoot">
+      <span class="label">Frantz — Paris</span>
+      <span class="label" id="year">2026</span>
     </div>
-    <div id="info-right">
-        <canvas id="info-cube-canvas"></canvas>
-    </div>
-</section>
-
-<!-- ── PANNEAU PROJET (template unique) ── -->
-<div id="project-panel">
-    <button id="project-close-btn">← RETOUR</button>
-    <div id="project-inner">
-        <div id="project-hero">
-            <video id="project-video-player" playsinline preload="metadata" loop></video>
-            <div id="project-title-display"></div>
-            <div id="project-controls">
-                <button id="proj-play-btn">PLAY</button>
-                <button id="proj-sound-btn">SON</button>
-                <button id="proj-fs-btn">PLEIN ÉCRAN</button>
-            </div>
-            <div id="project-scroll-hint">↓ &nbsp; EN SAVOIR PLUS</div>
-        </div>
-        <div id="project-more">
-            <h2>EN COULISSES</h2>
-            <div id="project-more-grid"></div>
-        </div>
-    </div>
+  </div>
 </div>
 
-<!-- Les éléments <video> pour les TVs sont créés dynamiquement depuis PROJECTS -->
+<div id="peek" aria-hidden="true"></div>
+
+<div id="zoom" hidden><button class="close" id="z-close">Fermer ✕</button><div id="z-slot"></div></div>
+
+<div id="boot"><span>Chargement</span></div>
 
 <script>
-/* ── SOUND SYSTEM ── */
 (function(){
-    const audio = document.getElementById('bg-static-audio');
-    const toggle = document.getElementById('sound-toggle');
-    const iconOff = document.getElementById('icon-sound-off');
-    const iconOn = document.getElementById('icon-sound-on');
-    const soundHint = document.getElementById('sound-hint');
-    let isPlaying = false;
-    let _pausedByVideo = false;
-
-    audio.volume = 0.3;
-
-    window.pauseAmbient = function() {
-        if(isPlaying && !_pausedByVideo) {
-            audio.pause();
-            _pausedByVideo = true;
-        }
-    };
-    window.resumeAmbient = function() {
-        if(_pausedByVideo) {
-            _pausedByVideo = false;
-            audio.play().catch(function(){});
-            isPlaying = true;
-        }
-    }; 
-
-    // Fonction pour activer le son
-    const startAudio = () => {
-        if(!isPlaying) {
-            audio.play().then(() => {
-                isPlaying = true;
-                iconOff.style.display = 'none';
-                iconOn.style.display = 'block';
-                toggle.style.opacity = '1';
-                if(soundHint) soundHint.classList.remove('visible');
-            }).catch(e => console.log("Autoplay bloqué."));
-        }
-    };
-
-    // Exposé pour le consentement
-    window.startAmbient = startAudio;
-
-    // Activer au clic sur le bouton Toggle
-    toggle.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if(isPlaying){
-            audio.pause();
-            iconOff.style.display = 'block';
-            iconOn.style.display = 'none';
-            toggle.style.opacity = '0.5';
-            isPlaying = false;
-        } else {
-            startAudio();
-        }
-    });
-})();
-/* ── CLIENTS dynamiques depuis API ── */
-(function(){
-    var grid = document.getElementById('clients-grid-dynamic');
-    if(!grid) return;
-    fetch('https://portfolio-api.francois-teule.workers.dev/clients')
-        .then(function(r){ return r.json(); })
-        .then(function(data){
-            if(!Array.isArray(data) || !data.length) return;
-            grid.innerHTML = '';
-            data.forEach(function(c){
-                var img = document.createElement('img');
-                img.src = c.logo_url; img.alt = c.name; img.loading = 'lazy';
-                grid.appendChild(img);
-            });
-        })
-        .catch(function(){});
-})();
-
-/* ── SOUND CONSENT HANDLER ── */
-(function(){
-    var consent = document.getElementById('sound-consent');
-    var isMob   = window.innerWidth <= 768;
-
-    function dismiss(withSound) {
-        window._soundChoice = withSound ? 'on' : 'off';
-        consent.classList.add('hidden');
-        if(withSound && window.startAmbient) window.startAmbient();
-    }
-
-    if(isMob) {
-        var g = consent.querySelector('.consent-sound-group');
-        var ge = consent.querySelector('.consent-enter-group');
-        if(g)  g.style.display  = 'none';
-        if(ge) ge.style.display = 'flex';
-        var btnEnter = document.getElementById('consent-enter');
-        if(btnEnter) btnEnter.addEventListener('click', function(){ dismiss(false); });
-    } else {
-        var btnOn  = document.getElementById('consent-sound-on');
-        var btnOff = document.getElementById('consent-sound-off');
-        if(btnOn)  btnOn.addEventListener('click',  function(){ dismiss(true);  });
-        if(btnOff) btnOff.addEventListener('click', function(){ dismiss(false); });
-    }
-})();
-
-/* ── CLOCK ── */
-(function(){
-    function u(){ var c=document.getElementById('clock'); if(c) c.innerText=new Date().toLocaleTimeString('en-GB',{timeZone:'UTC',hour12:false})+' (GMT)'; }
-    setInterval(u,1000); u();
-})();
-
-/* ── REINITIALISER LE SITE AU CLIC LOGO ── */
-document.getElementById('main-logo').addEventListener('click', function() { window.location.reload(); });
-
-var PHOTO_META = {
-    'gucci-flora':   { name: 'Gucci Flora Gorgeous Orchid', date: 'Fév. 2026', tools: 'Midjourney · Magnific AI' },
-    'hermes-1':      { name: 'Hermès — Éclat Minéral',      date: 'Fév. 2026', tools: 'Midjourney · Magnific AI' },
-    'issey-1':       { name: 'Issey Miyake — Éditorial',    date: 'Jan. 2026', tools: 'BangGroup · Magnific AI' },
-    'issey-v1':      { name: 'Issey Miyake — V1',           date: 'Jan. 2026', tools: 'Midjourney · PS' },
-    'mfk-1':         { name: 'Maison Francis Kurkdjian',    date: 'Fév. 2026', tools: 'ChatGPT · Magnific AI' },
-    'mfk-2':         { name: 'Maison Francis Kurkdjian',    date: 'Fév. 2026', tools: 'ChatGPT · Magnific AI' },
-    'valentino-1':   { name: 'Valentino — Fragrance 01',    date: 'Fév. 2026', tools: 'Midjourney · Magnific AI' },
-    'valentino-2':   { name: 'Valentino — Fragrance 02',    date: 'Fév. 2026', tools: 'Midjourney · Magnific AI' },
-    'issey-eau':     { name: "Issey Miyake — L'Eau",        date: 'Mar. 2026', tools: 'Midjourney · Magnific AI' },
-    'capture-1':     { name: 'Sans titre 01',               date: '2025',      tools: 'Sony A7 IV' },
-    'capture-2':     { name: 'Sans titre 02',               date: '2025',      tools: 'Sony A7 IV' },
-    'creed-1':     { name: 'Sans titre 01',               date: '2026',      tools: 'Sony A7 IV' },
-    'creed-2':     { name: 'Sans titre 02',               date: '2026',      tools: 'Sony A7 IV' }
-};
-
-var PHOTOS_IA = [
-    { id:'gucci-flora', src:'https://assets.frantzimann.org/perfume/GUCCI/._Gucci%20Flora%20Gorgeous%20Orchid.webp' },
-    { id:'hermes-1',    src:'https://assets.frantzimann.org/perfume/HERMES/hermes-1.webp' },
-    { id:'issey-v1',    src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey1.webp' },
-    { id:'issey-v2',    src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey2.webp' },
-    { id:'mfk-1',       src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis.webp' },
-    { id:'mfk-2',       src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis1.webp' },
-    { id:'valentino-1', src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino1.webp' },
-    { id:'valentino-2', src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino2.webp' },
-    { id:'creed-1', src:'https://assets.frantzimann.org/perfume/CREED/creed-1.webp' },
-    { id:'creed-2',   src:"https://assets.frantzimann.org/perfume/CREED/creed-2.webp" }
-];
-
-var PHOTOS_CAPTURE = [
-    { id:'capture-1', src:'./EXPORT INSTA/1.jpg' },
-    { id:'capture-2', src:'./EXPORT INSTA/2.jpg' },
-    { id:'capture-1', src:'./EXPORT INSTA/1.jpg' },
-    { id:'capture-2', src:'./EXPORT INSTA/2.jpg' },
-    { id:'capture-1', src:'./EXPORT INSTA/1.jpg' },
-    { id:'capture-2', src:'./EXPORT INSTA/2.jpg' },
-    { id:'capture-1', src:'./EXPORT INSTA/1.jpg' },
-    { id:'capture-2', src:'./EXPORT INSTA/2.jpg' }
-];
-
-/* ── PHOTO CAROUSEL + ROUE — données depuis API ── */
-var _ALL_PHOTOS_FALLBACK = [
-    { src:'https://assets.frantzimann.org/perfume/GUCCI/Gucci%20Flora%20Gorgeous%20Orchid.webp', name:'Gucci Flora', date:'Fév. 2026', tools:'Midjourney', cat:'' },
-    { src:'https://assets.frantzimann.org/perfume/HERMES/hermes-1.webp',                          name:'Hermès',      date:'Fév. 2026', tools:'Midjourney', cat:'' },
-    { src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey1.webp',                         name:'Issey V1',    date:'Jan. 2026', tools:'Midjourney', cat:'' },
-    { src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey2.webp',                         name:'Issey V2',    date:'Jan. 2026', tools:'Midjourney', cat:'' },
-    { src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis.webp',               name:'MFK 01',      date:'Fév. 2026', tools:'ChatGPT',    cat:'' },
-    { src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis1.webp',              name:'MFK 02',      date:'Fév. 2026', tools:'ChatGPT',    cat:'' },
-    { src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino1.webp',                       name:'Valentino 01',date:'Fév. 2026', tools:'Midjourney', cat:'' },
-    { src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino2.webp',                       name:'Valentino 02',date:'Fév. 2026', tools:'Midjourney', cat:'' },
-    { src:'https://assets.frantzimann.org/perfume/CREED/creed-1.webp',                              name:'Creed 01',    date:'2026',       tools:'Sony A7 IV', cat:'' },
-    { src:'https://assets.frantzimann.org/perfume/CREED/creed-2.webp',                              name:'Creed 02',    date:'2026',       tools:'Sony A7 IV', cat:'' },
-];
-
-fetch('https://portfolio-api.francois-teule.workers.dev/media')
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-        return (Array.isArray(data) && data.length)
-            ? data.map(function(m){ return { src: m.url, name: m.name, date: m.date, tools: m.tools, cat: '' }; })
-            : _ALL_PHOTOS_FALLBACK;
-    })
-    .catch(function(){ return _ALL_PHOTOS_FALLBACK; })
-    .then(function(ALL_PHOTOS) {
-    var TOTAL = ALL_PHOTOS.length;
-    if(!TOTAL) return;
-
-    var TOTAL = ALL_PHOTOS.length;
-
-    var carouselEl = document.getElementById('photo-carousel');
-    var wheelEl    = document.getElementById('photo-wheel-area');
-    var infName    = document.getElementById('photo-info-name');
-    var infMeta    = document.getElementById('photo-info-meta');
-    var catLbl     = document.getElementById('photo-category-label');
-
-    /* ── Build carousel slides ── */
-    var slides = [], _decodePromises = [];
-    ALL_PHOTOS.forEach(function(p) {
-        var slide = document.createElement('div');
-        slide.className = 'carousel-slide';
-        var img = document.createElement('img');
-        img.src = p.src; img.alt = ''; img.draggable = false;
-        slide.appendChild(img);
-        carouselEl.appendChild(slide);
-        slides.push(slide);
-        _decodePromises.push(img.decode ? img.decode().catch(function(){}) : Promise.resolve());
-    });
-
-    /* ── Roue canvas ── */
-    var thumbs = [];
-    var wCtx = null, wheelCanvas = null;
-    var thumbImages = ALL_PHOTOS.map(function(p) {
-        var img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = p.src;
-        _decodePromises.push(img.decode ? img.decode().catch(function(){}) : Promise.resolve());
-        return img;
-    });
-
-    wheelCanvas = document.createElement('canvas');
-    wheelCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:10;pointer-events:none;';
-    wheelEl.appendChild(wheelCanvas);
-    wCtx = wheelCanvas.getContext('2d');
-
-    function resizeWheelCanvas() {
-        var dpr = window.devicePixelRatio || 1;
-        wheelCanvas.width  = window.innerWidth  * dpr;
-        wheelCanvas.height = window.innerHeight * dpr;
-        wCtx.scale(dpr, dpr);
-    }
-    resizeWheelCanvas();
-    window.addEventListener('resize', resizeWheelCanvas);
-
-    /* Click sur la roue canvas → hit-test (sur photoPage, pas le canvas) */
-    document.getElementById('page-photo').addEventListener('click', function(e) {
-        if(window.currentPage !== 'photo') return;
-        var rect = wheelCanvas.getBoundingClientRect();
-        var mx = e.clientX - rect.left;
-        var my = e.clientY - rect.top;
-        var TAU = 2 * Math.PI, HW = 26, HH = 35;
-        var baseAngle = -(wPos / TOTAL) * TAU - Math.PI / 2;
-        for(var s = 0; s < TOTAL; s++) {
-            var angle = baseAngle + (s / TOTAL) * TAU;
-            var x = _cx + _rx * Math.cos(angle) - HW;
-            var y = _cy + _ry * Math.sin(angle) - HH;
-            if(mx >= x && mx <= x + HW*2 && my >= y && my <= y + HH*2) {
-                var diff = s - wPos;
-                diff = diff - Math.round(diff / TOTAL) * TOTAL;
-                wTarget = wPos + diff;
-                clearTimeout(snapTimer);
-                startPhotoWheelIfNeeded();
-                break;
-            }
-        }
-    });
-
-    /* ── Attendre que toutes les images soient décodées ── */
-    var _preloaded = false, _onPreloaded = null;
-    Promise.all(_decodePromises).then(function() {
-        _preloaded = true;
-        if(_onPreloaded) _onPreloaded();
-        /* Pre-warm : positionne tous les éléments pendant que la section est     */
-        /* encore invisible. Chrome (will-change:opacity) rasterise en idle       */
-        /* → zéro paint au premier scroll de l'utilisateur.                       */
-        render();
-    });
-
-    /* Retour d'onglet : Chrome évicte le cache GPU → relancer le warm-up */
-    document.addEventListener('visibilitychange', function() {
-        if(document.visibilityState === 'visible' && window.currentPage === 'photo') {
-            startPhotoWheelIfNeeded();
-        }
-    });
-
-    /* ── Cache viewport ── */
-    var _VW, _VH, _cx, _cy, _rx, _ry, _slideW, _slideOff;
-    function updateViewport() {
-        _VW = window.innerWidth; _VH = window.innerHeight;
-        _slideW   = _VW / 3;                    /* largeur d'une slide */
-        _slideOff = _VW / 2 - _slideW / 2;      /* décalage pour centrer la slide active */
-        _cx = _VW * 0.50; _cy = _VH * 0.50;
-        _rx = _VW * 0.41; _ry = _VH * 0.36;
-    }
-    updateViewport();
-    window.addEventListener('resize', updateViewport);
-
-    /* ── Cache style pour éviter les recalculs DOM inutiles ── */
-    var _lastTx      = new Array(TOTAL).fill('');
-    var _lastSlide   = new Array(TOTAL).fill('');
-    var _lastIsAct   = new Array(TOTAL).fill(false);
-
-    var wPos = 0, wTarget = 0, lastActive = -1, snapTimer;
-
-    function setInfo(idx) {
-        if(idx === lastActive) return;
-        lastActive = idx;
-        var p = ALL_PHOTOS[idx];
-        infName.textContent = p.name  || '';
-        infMeta.textContent = [p.date, p.tools].filter(Boolean).join('  ·  ');
-        catLbl.textContent  = p.cat   || '';
-    }
-
-    function render() {
-        var TAU = 2 * Math.PI;
-        var HW = 26, HH = 35;
-
-        /* Index de la slide centrée */
-        var centerIdx = (((Math.round(wPos) % TOTAL) + TOTAL) % TOTAL);
-        setInfo(centerIdx);
-
-        /* ── Carrousel slides ── */
-        for(var i = 0; i < slides.length; i++) {
-            var diff = i - wPos;
-            diff = diff - Math.round(diff / TOTAL) * TOTAL;
-            var sx = (_slideOff + diff * _slideW).toFixed(0);
-            var stx = 'translate3d(' + sx + 'px,0,0)';
-            if(stx !== _lastSlide[i]) { slides[i].style.transform = stx; _lastSlide[i] = stx; }
-        }
-
-        /* ── Roue canvas ── */
-        if(wCtx) {
-            wCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-            var baseAngle = -(wPos / TOTAL) * TAU - Math.PI / 2;
-            for(var s = 0; s < TOTAL; s++) {
-                var angle = baseAngle + (s / TOTAL) * TAU;
-                var x = _cx + _rx * Math.cos(angle) - HW;
-                var y = _cy + _ry * Math.sin(angle) - HH;
-                var img = thumbImages[s];
-                if(!img.complete) continue;
-                wCtx.globalAlpha = (s === centerIdx) ? 1.0 : 0.6;
-                wCtx.drawImage(img, x, y, HW * 2, HH * 2);
-                if(s === centerIdx) {
-                    wCtx.globalAlpha = 1;
-                    wCtx.strokeStyle = 'rgba(255,255,255,0.75)';
-                    wCtx.lineWidth = 1;
-                    wCtx.strokeRect(x + 0.5, y + 0.5, HW * 2 - 1, HH * 2 - 1);
-                }
-            }
-            wCtx.globalAlpha = 1;
-        }
-    }
-
-    /* ── Boucle RAF avec delta-time et arrêt auto ── */
-    var rafWheel = null, _lastTime = 0;
-    var LERP_SPEED = 5.5;
-
-    function tickWheel(now) {
-        var dt = Math.min((now - _lastTime) / 1000, 0.05);
-        _lastTime = now;
-        var diff = wTarget - wPos;
-        if(Math.abs(diff) < 0.0005) {
-            wPos = wTarget;
-            render(); rafWheel = null; return;
-        }
-        wPos += diff * (1 - Math.exp(-LERP_SPEED * dt));
-        render();
-        rafWheel = requestAnimationFrame(tickWheel);
-    }
-
-    function startPhotoWheelIfNeeded() {
-        if(!rafWheel) { _lastTime = performance.now(); rafWheel = requestAnimationFrame(tickWheel); }
-    }
-
-    window.startPhotoWheel = startPhotoWheelIfNeeded;
-    window.stopPhotoWheel  = function(){ if(rafWheel){ cancelAnimationFrame(rafWheel); rafWheel = null; } };
-
-    /* ── Événements de navigation ── */
-    var photoPage = document.getElementById('page-photo');
-
-    photoPage.addEventListener('wheel', function(e) {
-        if(window.currentPage !== 'photo') return;
-        e.preventDefault();
-        var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-        wTarget -= d * 0.018;
-        clearTimeout(snapTimer);
-        snapTimer = setTimeout(function(){ wTarget = Math.round(wTarget); startPhotoWheelIfNeeded(); }, 350);
-        startPhotoWheelIfNeeded();
-    }, { passive: false });
-
-    var tx0 = 0;
-    photoPage.addEventListener('touchstart', function(e){ tx0 = e.touches[0].clientX; }, { passive: true });
-    photoPage.addEventListener('touchmove', function(e) {
-        if(window.currentPage !== 'photo') return;
-        var dx = e.touches[0].clientX - tx0;
-        wTarget -= dx * 0.028; tx0 = e.touches[0].clientX;
-        clearTimeout(snapTimer);
-        snapTimer = setTimeout(function(){ wTarget = Math.round(wTarget); startPhotoWheelIfNeeded(); }, 350);
-        startPhotoWheelIfNeeded();
-    }, { passive: true });
-
-    window.initPhotoWheel = function(){
-        lastActive = -1;
-        _lastTx.fill(''); _lastSlide.fill(''); _lastIsAct.fill(false);
-        function go() { render(); startPhotoWheelIfNeeded(); }
-        if(_preloaded) { go(); } else { _onPreloaded = go; }
-    };
-}); // fin fetch media .then
-
-/* ── NAVIGATION ── */
-var currentPage = 'selects';
-var navLinks = { selects:document.getElementById('nav-selects'), index:document.getElementById('nav-index'), photo:document.getElementById('nav-photo'), info:document.getElementById('nav-info') };
-var pageSections = { selects:document.getElementById('ui-layer'), index:document.getElementById('page-index'), photo:document.getElementById('page-photo'), info:document.getElementById('page-info') };
-function switchPage(target) {
-    currentPage = target;
-    Object.values(navLinks).forEach(function(l){ l.classList.remove('active'); });
-    if(navLinks[target]) navLinks[target].classList.add('active');
-    pageSections.selects.style.opacity = target === 'selects' ? '1' : '0';
-    pageSections.selects.style.pointerEvents = target === 'selects' ? 'auto' : 'none';
-    ['index','photo','info'].forEach(function(p){ pageSections[p].classList.toggle('active', p === target); });
-
-    /* ── Gestion des ressources selon l'onglet ── */
-    if(target === 'selects') {
-        if(window.start3D)       window.start3D();
-        if(window.resumeVideos)  window.resumeVideos();
-        if(window.stopPhotoWheel) window.stopPhotoWheel();
-    } else {
-        if(window.stop3D)        window.stop3D();
-        if(window.pauseVideos)   window.pauseVideos();
-        if(window.stopPhotoWheel) window.stopPhotoWheel();
-    }
-    if(target === 'photo' && window.initPhotoWheel) window.initPhotoWheel();
-    if(target === 'info'  && window.startInfoCube)  window.startInfoCube();
-    if(target !== 'info'  && window.stopInfoCube)   window.stopInfoCube();
-}
-Object.keys(navLinks).forEach(function(k){ if(navLinks[k]) navLinks[k].addEventListener('click', function(){ switchPage(k); }); });
+'use strict';
 
 /* ══════════════════════════════════════════════
-   PROJETS — chargés depuis l'API (fallback statique si hors-ligne)
-   ══════════════════════════════════════════════ */
-var PROJECTS_FALLBACK = [
-    {
-        title: 'BOILER ROOM',
-        videoSrc: 'https://assets.frantzimann.org/boiler-room-2025/boiler-2025-2.mp4',
-        more: [
-            { type:'video', src:'https://assets.frantzimann.org/boiler-room-2025/boiler-2025-1.mp4' },
-            { type:'video', src:'https://assets.frantzimann.org/boiler-room-2025/boiler-2025-3.mp4' },
-            { type:'video', src:'https://assets.frantzimann.org/boiler-room-2025/boiler-2025-4.mp4' },
-            { type:'img',   src:'https://assets.frantzimann.org/boiler-room-2025/boiler-2025-4.webp' },
-            { type:'video', src:'https://assets.frantzimann.org/boiler-room-2025/boiler-2025-5.mp4' },
-            { type:'img',   src:'https://assets.frantzimann.org/boiler-room-2025/boiler-2025-5.webp' },
-        ]
-    },
-    {
-        title: 'PICKLES SESH × STUDIO 56',
-        videoSrc: 'https://assets.frantzimann.org/pickles-nov-2025/pickles-nov-2025.mp4',
-        more: []
-    },
-    {
-        title: 'OBJECTIF N1 — ADIDAS BACKSTAGE',
-        videoSrc: 'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-202610.mp4',
-        more: [
-            { type:'video', src:'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-20261.mp4' },
-            { type:'video', src:'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-20262.mp4' },
-            { type:'video', src:'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-20263.mp4' },
-            { type:'video', src:'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-20264.mp4' },
-            { type:'video', src:'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-20265.mp4' },
-            { type:'video', src:'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-20266.mp4' },
-            { type:'video', src:'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-20267.mp4' },
-            { type:'img',   src:'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-20269.png' },
-        ]
-    },
-    {
-        title: 'HERMÈS × RICK OWENS — CARRÉ',
-        videoSrc: 'https://assets.frantzimann.org/carre-hermes/carre-hermes2.mp4',
-        more: []
-    },
-    {
-        title: 'PROJET-WINDOWS',
-        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project.mp4',
-        more: []
-    },
-    {
-        title: 'MONUMENT-EXTENDED',
-        videoSrc: 'https://assets.frantzimann.org/monument-extended/typo-anim_7.mp4',
-        more: [
-            { type:'video', src:'https://assets.frantzimann.org/monument-extended/typo-anim_1.mp4' },
-            { type:'video', src:'https://assets.frantzimann.org/monument-extended/typo-anim_2.mp4' },
-            { type:'video', src:'https://assets.frantzimann.org/monument-extended/typo-anim_3.mp4' },
-            { type:'video', src:'https://assets.frantzimann.org/monument-extended/typo-anim_4.mp4' },
-            { type:'video', src:'https://assets.frantzimann.org/monument-extended/typo-anim_5.mp4' },
-            { type:'video', src:'https://assets.frantzimann.org/monument-extended/typo-anim_6.mp4' },
-        ]
-    },
-    {
-        title: 'MAFIA DE LA BRAISE - HIPPOPOTAMUS',
-        videoSrc: '/noproj.mp4',
-        more: []
-    },
-    {
-        title: 'COMMING SOON',
-        videoSrc: '/noproj.mp4',
-        more: []
-    }
-    /* — pour ajouter un projet : copier un bloc { title, videoSrc, more:[] } — */
-];
-
-// Disponible immédiatement (fallback), remplacé dès que l'API répond
-var PROJECTS = PROJECTS_FALLBACK;
-window.PROJECTS = PROJECTS;
-
-window._projectsReady = fetch('https://portfolio-api.francois-teule.workers.dev/projects')
-    .then(function(res){ return res.json(); })
-    .then(function(data){
-        if(Array.isArray(data) && data.length){
-            PROJECTS = data.map(function(p){
-                return {
-                    title:    p.title,
-                    videoSrc: p.video_url || '',
-                    more:     Array.isArray(p.more) ? p.more : [],
-                    status:   p.status || 'published'
-                };
-            });
-            window.PROJECTS = PROJECTS;
-        }
-    })
-    .catch(function(){ /* garde le fallback */ });
-
-/* ══════════════════════════════════════════════
-   MOBILE + PANEL — initialisés après chargement des projets
+   RÉGLAGES
 ══════════════════════════════════════════════ */
-window._projectsReady.then(function(){
-var isMobile = window.innerWidth <= 768;
+var API  = 'https://portfolio-api.francois-teule.workers.dev';
+var ZONE = 'https://assets.frantzimann.org';
 
-if(isMobile) {
-    /* ── Désactive le loader Three.js (pas de scène 3D) ── */
-    document.getElementById('loader').classList.add('hidden');
+/* Passer à true une fois les transformations activées sur la zone
+   Cloudflare. Les vignettes deviennent alors de vraies images
+   générées côté serveur, sans aucun téléchargement de vidéo. */
+var CF_MEDIA = false;   /* vidéos  : /cdn-cgi/media/  */
+var CF_IMAGE = false;   /* images  : /cdn-cgi/image/  */
 
-    /* ── Désactive le son ambiant sur mobile ── */
-    var _bgAudio = document.getElementById('bg-static-audio');
-    if(_bgAudio) { _bgAudio.pause(); _bgAudio.volume = 0; }
+function onZone(u){ return u && u.indexOf(ZONE) === 0; }
+function vidUrl(src, w){
+  if(!CF_MEDIA || !onZone(src)) return src;
+  return ZONE + '/cdn-cgi/media/width=' + w + ',fit=scale-down/' + src;
+}
+function imgUrl(src, w){
+  if(!CF_IMAGE || !onZone(src)) return src;
+  return ZONE + '/cdn-cgi/image/width=' + w + ',fit=scale-down,format=auto/' + src;
+}
+function isVid(u){ return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u || ''); }
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+  });
+}
 
-    /* ── Burger / Drawer ── */
-    var burgerBtn   = document.getElementById('burger-btn');
-    var drawerEl    = document.getElementById('mobile-drawer');
-    var drawerOverlay = document.getElementById('drawer-overlay');
-    var mobNavVideo = document.getElementById('mob-nav-video');
-    var mobNavPhoto = document.getElementById('mob-nav-photo');
-    var mobNavInfo  = document.getElementById('mob-nav-info');
+/* ── Fondus d'ouverture et de fermeture des panneaux ──
+   L'attribut hidden coupe toute transition, on l'enlève d'abord,
+   on laisse une image passer, puis on anime l'opacité. */
+var FADE = 320;
+function isOpen(el){ return el.classList.contains('open'); }
+function openPanel(el){
+  if(el._t){ clearTimeout(el._t); el._t = null; }
+  el.hidden = false;
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.classList.add('open'); }); });
+}
+function closePanel(el, after){
+  if(!isOpen(el) && el.hidden){ if(after) after(); return; }
+  el.classList.remove('open');
+  if(el._t) clearTimeout(el._t);
+  el._t = setTimeout(function(){
+    el.hidden = true; el._t = null;
+    if(after) after();
+  }, reduced ? 0 : FADE);
+}
+function yearOf(s){ var m = String(s || '').match(/(19|20)\d{2}/); return m ? m[0] : ''; }
+function mod(n, m){ return ((n % m) + m) % m; }
 
-    function toggleDrawer() { document.body.classList.toggle('menu-open'); }
-    function closeDrawer()  { document.body.classList.remove('menu-open'); }
-    burgerBtn.addEventListener('click', toggleDrawer);
-    drawerOverlay.addEventListener('click', closeDrawer);
+var reduced = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 
-    /* ── Navigation mobile ── */
-    var mobSections = {
-        video: document.getElementById('mobile-video-section'),
-        photo: document.getElementById('page-photo'),
-        info:  document.getElementById('page-info')
-    };
-    var mobNavBtns = { video: mobNavVideo, photo: mobNavPhoto, info: mobNavInfo };
+/* ══════════════════════════════════════════════
+   VIGNETTES : une seule petite image par projet,
+   fabriquée une fois puis réutilisée par toutes les
+   tuiles. C'est ce qui garde le mur fluide quel que
+   soit le nombre de projets affichés en même temps.
+══════════════════════════════════════════════ */
+var THUMB = {};           /* src -> dataURL | url | null */
+var WAIT  = {};           /* src -> [callbacks]          */
+var QUEUE = [], BUSY = 0, MAXBUSY = 2, TW = 440;
 
-    function switchMobilePage(page) {
-        Object.values(mobSections).forEach(function(s){ if(s) s.classList.remove('mob-active'); });
-        Object.values(mobNavBtns).forEach(function(b){ if(b) b.classList.remove('active'); });
-        if(mobSections[page]) mobSections[page].classList.add('mob-active');
-        if(mobNavBtns[page])  mobNavBtns[page].classList.add('active');
-        closeDrawer();
-        window.scrollTo({ top: 0, behavior: 'instant' });
-        if(page === 'info' && window.startInfoCube)  window.startInfoCube();
-        if(page !== 'info' && window.stopInfoCube)   window.stopInfoCube();
-    }
-    mobNavVideo.addEventListener('click', function(){ switchMobilePage('video'); });
-    mobNavPhoto.addEventListener('click', function(){ switchMobilePage('photo'); });
-    mobNavInfo.addEventListener('click',  function(){ switchMobilePage('info'); });
+function thumb(src, kind, cb){
+  if(!src) return cb(null);
+  if(THUMB[src] !== undefined) return cb(THUMB[src]);
+  if(kind === 'video' && CF_MEDIA && onZone(src)){
+    THUMB[src] = ZONE + '/cdn-cgi/media/mode=frame,time=1s,width=' + TW + '/' + src;
+    return cb(THUMB[src]);
+  }
+  if(kind === 'photo' && CF_IMAGE && onZone(src)){
+    THUMB[src] = imgUrl(src, TW);
+    return cb(THUMB[src]);
+  }
+  if(WAIT[src]){ WAIT[src].push(cb); return; }
+  WAIT[src] = [cb];
+  QUEUE.push([src, kind]);
+  pump();
+}
 
-    /* ── Section vidéo : liste des projets depuis PROJECTS ── */
-    var mobileVideoList = document.getElementById('mobile-video-list');
-    PROJECTS.forEach(function(proj, idx) {
-        if(proj.title === 'COMMING SOON') return;
-        var card = document.createElement('div');
-        card.className = 'mobile-proj-card';
+function settle(src, url){
+  THUMB[src] = url || null;
+  (WAIT[src] || []).forEach(function(f){ f(THUMB[src]); });
+  delete WAIT[src];
+  BUSY--; pump();
+}
 
-        var v = document.createElement('video');
-        v.src = proj.videoSrc; v.muted = true; v.loop = true; v.playsInline = true;
-        v.autoplay = false;
-        card.appendChild(v);
+function shrink(el, w, h){
+  var c = document.createElement('canvas');
+  c.width = TW;
+  c.height = Math.max(1, Math.round(TW * (h / w))) || 280;
+  c.getContext('2d').drawImage(el, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', .74);
+}
 
-        var titleEl = document.createElement('div');
-        titleEl.className = 'mobile-proj-card-title';
-        titleEl.textContent = proj.title;
-        card.appendChild(titleEl);
+function pump(){
+  while(BUSY < MAXBUSY && QUEUE.length){
+    BUSY++;
+    (function(job){
+      var src = job[0], kind = job[1], killed = false;
+      var to = setTimeout(function(){ if(!killed){ killed = true; settle(src, null); } }, 14000);
 
-        var cta = document.createElement('div');
-        cta.className = 'mobile-proj-card-cta';
-        cta.textContent = 'DÉCOUVRIR';
-        card.appendChild(cta);
+      if(kind === 'photo'){
+        var im = new Image();
+        im.crossOrigin = 'anonymous';
+        im.onload = function(){
+          if(killed) return; killed = true; clearTimeout(to);
+          var url;
+          /* Si le canevas est « teinté » (pas d'en-tête CORS sur le fichier),
+             on retombe sur l'image d'origine plutôt que sur rien. */
+          try{ url = shrink(im, im.naturalWidth, im.naturalHeight); }
+          catch(e){ url = src; }
+          settle(src, url);
+        };
+        im.onerror = function(){
+          if(killed) return; killed = true; clearTimeout(to); settle(src, src);
+        };
+        im.src = src;
+        return;
+      }
 
-        card.addEventListener('click', function(){ window.openProject(idx); });
-
-        /* Auto-play quand visible (IntersectionObserver) */
-        var obs = new IntersectionObserver(function(entries){
-            entries.forEach(function(e){ e.isIntersecting ? v.play().catch(function(){}) : v.pause(); });
-        }, { threshold: 0.4 });
-        obs.observe(card);
-
-        mobileVideoList.appendChild(card);
-    });
-
-    /* ── Section photo : galerie depuis API ── */
-    var gridEl = document.getElementById('mobile-photo-grid');
-    function buildMobilePhotoGrid(photos) {
-        gridEl.innerHTML = '';
-        photos.forEach(function(photo){
-            var wrap = document.createElement('div');
-            wrap.className = 'mobile-photo-wrap';
-            var img = document.createElement('img');
-            img.src = photo.url || photo.src; img.className = 'mobile-photo-item'; img.loading = 'lazy';
-            wrap.appendChild(img);
-            if(photo.name) {
-                var info = document.createElement('div');
-                info.className = 'mobile-photo-info';
-                info.innerHTML =
-                    '<div class="mobile-photo-info-name">' + photo.name + '</div>' +
-                    '<div class="mobile-photo-info-meta">' + (photo.date||'') + (photo.tools ? ' &nbsp;·&nbsp; ' + photo.tools : '') + '</div>';
-                wrap.appendChild(info);
-                wrap.addEventListener('click', function(){
-                    var isActive = wrap.classList.contains('info-active');
-                    gridEl.querySelectorAll('.mobile-photo-wrap.info-active').forEach(function(w){ w.classList.remove('info-active'); });
-                    if(!isActive) wrap.classList.add('info-active');
-                });
-            }
-            gridEl.appendChild(wrap);
-        });
-    }
-    fetch('https://portfolio-api.francois-teule.workers.dev/media')
-        .then(function(r){ return r.json(); })
-        .then(function(data){ if(Array.isArray(data) && data.length) buildMobilePhotoGrid(data); })
-        .catch(function(){});
-
-    /* Ferme l'info au scroll */
-    var photoSection = document.getElementById('page-photo');
-    if(photoSection) {
-        photoSection.addEventListener('scroll', function(){
-            gridEl.querySelectorAll('.mobile-photo-wrap.info-active').forEach(function(w){
-                w.classList.remove('info-active');
-            });
-        }, { passive: true });
-    }
-
-    /* ── Page de départ ── */
-    switchMobilePage('video');
+      var v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.preload = 'metadata';
+      v.crossOrigin = 'anonymous';
+      v.addEventListener('loadeddata', function(){
+        if(killed) return; killed = true; clearTimeout(to);
+        var url = null;
+        try{ url = shrink(v, v.videoWidth || 16, v.videoHeight || 10); }catch(e){ url = null; }
+        v.removeAttribute('src');
+        try{ v.load(); }catch(e){}
+        settle(src, url);
+      }, { once:true });
+      v.addEventListener('error', function(){
+        if(killed) return; killed = true; clearTimeout(to); settle(src, null);
+      }, { once:true });
+      v.src = vidUrl(src, 640) + '#t=0.8';
+      v.load();
+    })(QUEUE.shift());
+  }
 }
 
 /* ══════════════════════════════════════════════
-   PANNEAU PROJET — contrôleur unique (desktop + mobile)
-   ══════════════════════════════════════════════ */
-(function(){
-    var panel    = document.getElementById('project-panel');
-    var inner    = document.getElementById('project-inner');
-    var vid      = document.getElementById('project-video-player');
-    var titleEl  = document.getElementById('project-title-display');
-    var moreGrid = document.getElementById('project-more-grid');
-    var playBtn  = document.getElementById('proj-play-btn');
-    var soundBtn = document.getElementById('proj-sound-btn');
-    var fsBtn    = document.getElementById('proj-fs-btn');
-    var closeBtn = document.getElementById('project-close-btn');
+   DONNÉES
+══════════════════════════════════════════════ */
+var ALL = [], ITEMS = [], FILTER = 'TOUT', MODE = 'wall';
+var lastFocus = null;
 
-    var soundOn = false;
-    vid.muted = true;
+var wallEl = document.getElementById('wall');
+var plane  = document.getElementById('plane');
+var listEl = document.getElementById('list');
+var listWrap = document.getElementById('listwrap');
+var cntEl  = document.getElementById('count');
+var filtEl = document.getElementById('filters');
 
-    function syncPlayBtn() {
-        playBtn.textContent = vid.paused ? 'PLAY' : 'PAUSE';
-        playBtn.classList.toggle('active', !vid.paused);
+var yEl = document.getElementById('year');
+if(yEl) yEl.textContent = new Date().getFullYear();
+
+function boot(){
+  Promise.all([
+    fetch(API + '/projects').then(function(r){ return r.json(); }).catch(function(){ return []; }),
+    fetch(API + '/media').then(function(r){ return r.json(); }).catch(function(){ return []; }),
+    fetch(API + '/clients').then(function(r){ return r.json(); }).catch(function(){ return []; })
+  ]).then(function(res){
+    var projects = Array.isArray(res[0]) ? res[0] : [];
+    var media    = Array.isArray(res[1]) ? res[1] : [];
+    var clients  = Array.isArray(res[2]) ? res[2] : [];
+
+    projects.forEach(function(p){
+      var more = p.more;
+      if(!Array.isArray(more)){
+        try{ more = JSON.parse(p.more_urls || '[]'); }catch(e){ more = []; }
+      }
+      more = (more || []).filter(function(m){ return m && m.src; }).map(function(m){
+        return { type: (m.type === 'video' || isVid(m.src)) ? 'video' : 'img', src: m.src };
+      });
+      var creds = p.credits;
+      if(!Array.isArray(creds)){
+        try{ creds = JSON.parse(p.credits || '[]'); }catch(e){ creds = []; }
+      }
+      creds = (creds || []).filter(function(c){ return c && (c.role || c.name); });
+
+      ALL.push({
+        key:'projet-' + p.id, kind:'video', cat:'Vidéo',
+        title: p.title || 'Sans titre',
+        year: yearOf(p.created_at),
+        src: p.video_url || '',
+        thumb: p.thumb_url || '',        /* miniature choisie dans le back-office */
+        desc: p.description || '',
+        credits: creds,
+        more: more,
+        soon: p.status === 'coming_soon' || !p.video_url
+      });
+    });
+
+    media.forEach(function(m){
+      ALL.push({
+        key:'photo-' + m.id, kind:'photo', cat:'Photo',
+        title: m.name || 'Sans titre',
+        year: yearOf(m.date) || (m.date || ''),
+        date: m.date || '', tools: m.tools || '',
+        src: m.url || '', thumb: '', desc: '', credits: [],
+        more: [], soon: false
+      });
+    });
+
+    buildFilters();
+    buildLogos(clients);
+    apply();
+    document.getElementById('boot').hidden = true;
+    route();
+    loop();
+  });
+}
+
+/* ══════════════════════════════════════════════
+   FILTRES
+══════════════════════════════════════════════ */
+function buildFilters(){
+  var c = { 'TOUT': ALL.length, 'Vidéo': 0, 'Photo': 0 };
+  ALL.forEach(function(i){ c[i.cat] = (c[i.cat] || 0) + 1; });
+  filtEl.innerHTML = ['TOUT','Vidéo','Photo'].map(function(k){
+    return '<button class="chip" data-f="' + esc(k) + '" aria-pressed="' + (k === FILTER) + '">' +
+           esc(k === 'TOUT' ? 'Tout' : k) + '<span class="n">' + (c[k] || 0) + '</span></button>';
+  }).join('');
+  filtEl.querySelectorAll('.chip').forEach(function(b){
+    b.addEventListener('click', function(){
+      FILTER = b.dataset.f;
+      filtEl.querySelectorAll('.chip').forEach(function(x){
+        x.setAttribute('aria-pressed', String(x.dataset.f === FILTER));
+      });
+      apply();
+    });
+  });
+}
+
+function apply(){
+  ITEMS = ALL.filter(function(i){ return FILTER === 'TOUT' || i.cat === FILTER; });
+  STRIDE = pickStride(ITEMS.length);
+  renderList();
+  resetWall();
+}
+
+/* ══════════════════════════════════════════════
+   MUR 3D — grille infinie, nœuds recyclés
+══════════════════════════════════════════════ */
+var CW = 300, CH = 200, GAPX = 34, GAPY = 30;
+var tx = 0, ty = 0, sx = 0, sy = 0;     /* cible et position lissée */
+var tiles = {}, freeNodes = [], scrollAcc = 0;
+
+function sizes(){
+  /* En vue liste le mur est masqué : clientWidth vaut 0. On retombe alors
+     sur la largeur de fenêtre, et on garde un plancher, sinon le pas de
+     grille vaut zéro et la boucle de placement ne se termine jamais. */
+  var vw = wallEl.clientWidth || window.innerWidth || 1024;
+  CW = vw < 700 ? Math.round(vw / 2.2) : Math.max(210, Math.min(330, vw / 5.1));
+  CW = Math.max(120, CW);
+  CH = Math.max(80, Math.round(CW * 0.635));
+  GAPX = Math.max(10, Math.round(CW * 0.20));
+  GAPY = Math.max(10, Math.round(CH * 0.28));
+}
+
+/* Décalage d'une rangée à l'autre : premier entier ≥ 3 premier avec le
+   nombre de projets, pour que descendre change toujours de projet et que
+   la boucle parcoure bien toute la sélection. */
+var STRIDE = 3;
+function gcd(a, b){ while(b){ var t = a % b; a = b; b = t; } return a; }
+function pickStride(n){
+  if(n < 4) return 1;
+  for(var s = 3; s < n + 4; s++){ if(gcd(s, n) === 1) return s; }
+  return 1;
+}
+
+function itemAt(i, j){
+  if(!ITEMS.length) return null;
+  return ITEMS[mod(i + j * STRIDE, ITEMS.length)];
+}
+
+function take(){
+  var n = freeNodes.pop();
+  if(n){ n.style.display = ''; return n; }
+  n = document.createElement('button');
+  n.className = 'tile';
+  n.style.width = CW + 'px';
+  n.style.height = CH + 'px';
+  n._frame = document.createElement('span'); n._frame.className = 'tframe';
+  n._lab   = document.createElement('span'); n._lab.className = 'tlabel';
+  n.appendChild(n._frame); n.appendChild(n._lab);
+  n.addEventListener('click', function(e){
+    e.preventDefault();
+    if(dragged) return;
+    var it = n._item;
+    if(it && !it.soon){ lastFocus = n; location.hash = it.key; }
+  });
+  plane.appendChild(n);
+  return n;
+}
+function release(n){ n.style.display = 'none'; freeNodes.push(n); }
+
+function fill(node, it){
+  if(!it){ node._item = null; return; }
+  if(node._item && node._item.key === it.key) return;
+  node._item = it;
+
+  node.className = 'tile' + (it.soon ? ' soon' : '');
+  node.setAttribute('aria-label', it.soon ? 'Projet à venir' : ('Ouvrir ' + it.title));
+
+  var frame = node._frame, lab = node._lab;
+  frame.innerHTML = '<span class="ph">' + esc(it.soon ? 'Bientôt' : it.title) + '</span>';
+  lab.innerHTML = it.soon ? 'Bientôt'
+    : esc(it.title) + (it.year ? ' <em>· ' + esc(it.year) + '</em>' : '');
+
+  if(it.soon || !it.src) return;
+
+  /* Une miniature importée dans le back-office remplace l'arrêt sur image. */
+  thumb(it.thumb || it.src, it.thumb ? 'photo' : it.kind, function(url){
+    if(node._item !== it || !url) return;
+    var im = node._img || (node._img = new Image());
+    im.alt = ''; im.decoding = 'async';
+    if(im.getAttribute('src') !== url) im.src = url;
+    frame.innerHTML = '';
+    frame.appendChild(im);
+  });
+}
+
+function resetWall(){
+  Object.keys(tiles).forEach(function(k){ release(tiles[k]); });
+  tiles = {};
+  sizes();
+  freeNodes.forEach(function(n){ n.style.width = CW + 'px'; n.style.height = CH + 'px'; n._item = null; });
+  if(MODE === 'wall') layout(true);
+}
+
+function layout(force){
+  if(MODE !== 'wall' || !ITEMS.length){ return; }
+  var vw = wallEl.clientWidth, vh = wallEl.clientHeight;
+  var stepX = CW + GAPX, stepY = CH + GAPY;
+  if(vw < 2 || vh < 2 || stepX < 2 || stepY < 2) return;
+  var cx = vw / 2, cy = vh * 0.46;
+  var mx = stepX * 0.58, my = stepY * 0.58;
+
+  var i0 = Math.floor((sx - cx - mx) / stepX), i1 = Math.ceil((sx + cx + mx) / stepX);
+  var j0 = Math.floor((sy - cy - my) / stepY), j1 = Math.ceil((sy + (vh - cy) + my) / stepY);
+
+  /* Filet de sécurité : jamais plus de 160 tuiles à l'écran. */
+  if((i1 - i0 + 1) * (j1 - j0 + 1) > 160){ i1 = i0 + 15; j1 = j0 + 9; }
+
+  var seen = {};
+
+  for(var j = j0; j <= j1; j++){
+    for(var i = i0; i <= i1; i++){
+      var key = i + ':' + j;
+      seen[key] = 1;
+      var node = tiles[key];
+      if(!node){ node = take(); tiles[key] = node; fill(node, itemAt(i, j)); }
+
+      var x = i * stepX - sx + cx;
+      var y = j * stepY - sy + cy;
+      var dx = (x - cx) / (cx || 1);
+      var dy = (y - cy) / (vh * 0.5 || 1);
+
+      var rotY = -dx * 13;
+      var rotX = dy * 6;
+      var tz   = -(dx * dx * 190 + dy * dy * 130);
+      var op   = 1 - Math.min(.72, (dx * dx * .42 + dy * dy * .40));
+
+      /* On n'écrit dans le style que si la valeur a réellement changé :
+         c'est ce qui évite un recalcul complet à chaque image. */
+      var tr = 'translate3d(' + Math.round(x - CW / 2) + 'px,' + Math.round(y - CH / 2) + 'px,' +
+               Math.round(tz) + 'px) rotateY(' + rotY.toFixed(1) + 'deg) rotateX(' + rotX.toFixed(1) + 'deg)';
+      if(node._tr !== tr){ node.style.transform = tr; node._tr = tr; }
+      var o2 = op.toFixed(2);
+      if(node._op !== o2){ node.style.opacity = o2; node._op = o2; }
+      /* Aucun z-index ici : dans un contexte preserve-3d, un z-index
+         explicite impose un ordre différent de l'ordre 3D réel, et la
+         souris finit par toucher une autre tuile que celle qu'on voit. */
     }
-    function syncSoundBtn() {
-        soundBtn.textContent = soundOn ? 'COUPER LE SON' : 'SON';
-        soundBtn.classList.toggle('active', soundOn);
+  }
+
+  for(var k in tiles){
+    if(!seen[k]){ release(tiles[k]); delete tiles[k]; }
+  }
+
+  var cn = '↓ ' + ('000' + Math.abs(Math.round(scrollAcc / 12)) % 10000).slice(-4);
+  if(cntEl._v !== cn){ cntEl.textContent = cn; cntEl._v = cn; }
+}
+
+var raf = null;
+function loop(){
+  raf = requestAnimationFrame(loop);
+  if(MODE !== 'wall') return;
+  var k = reduced ? 1 : 0.12;
+  var ndx = (tx - sx) * k, ndy = (ty - sy) * k;
+  if(Math.abs(ndx) < .05 && Math.abs(ndy) < .05){
+    if(sx === tx && sy === ty) return;
+    sx = tx; sy = ty;
+  } else { sx += ndx; sy += ndy; }
+  layout(false);
+}
+
+/* ── entrées : molette, glisser, clavier ── */
+/* Défilement verrouillé sur l'axe vertical : le mur ne bouge qu'en Y. */
+wallEl.addEventListener('wheel', function(e){
+  e.preventDefault();
+  ty += e.deltaY;
+  scrollAcc += Math.abs(e.deltaY);
+}, { passive:false });
+
+/* Pas de setPointerCapture ici : la capture redirige l'événement « click »
+   vers le mur et les tuiles ne le reçoivent jamais. On écoute donc le
+   déplacement et le relâchement au niveau de la fenêtre. */
+var down = false, dragged = false, px = 0, py = 0;
+wallEl.addEventListener('pointerdown', function(e){
+  if(e.button !== undefined && e.button !== 0) return;
+  down = true; dragged = false; px = e.clientX; py = e.clientY;
+  wallEl.classList.add('drag');
+});
+window.addEventListener('pointermove', function(e){
+  if(!down) return;
+  var dx = e.clientX - px, dy = e.clientY - py;
+  if(Math.abs(dx) + Math.abs(dy) > 6) dragged = true;
+  if(dragged){
+    ty -= dy;                 /* horizontal ignoré : axe Y uniquement */
+    scrollAcc += Math.abs(dy);
+  }
+  px = e.clientX; py = e.clientY;
+}, { passive:true });
+function up(){
+  if(!down) return;
+  down = false;
+  wallEl.classList.remove('drag');
+  /* on laisse passer le click qui suit immédiatement un vrai glisser */
+  setTimeout(function(){ dragged = false; }, 60);
+}
+window.addEventListener('pointerup', up);
+window.addEventListener('pointercancel', up);
+
+document.addEventListener('keydown', function(e){
+  if(MODE !== 'wall' || !document.getElementById('view').hidden || !document.getElementById('infoview').hidden) {
+    /* pas de navigation clavier du mur quand un panneau est ouvert */
+  }
+  if(MODE !== 'wall') return;
+  if(!document.getElementById('view').hidden) return;
+  var step = CH + GAPY;
+  if(e.key === 'ArrowDown'){ ty += step; e.preventDefault(); }
+  else if(e.key === 'ArrowUp'){ ty -= step; e.preventDefault(); }
+});
+
+window.addEventListener('resize', function(){ resetWall(); });
+
+/* ══════════════════════════════════════════════
+   VUE LISTE
+══════════════════════════════════════════════ */
+function renderList(){
+  if(!ITEMS.length){ listEl.innerHTML = '<p class="empty">Aucun projet dans cette catégorie.</p>'; return; }
+  listEl.innerHTML = ITEMS.map(function(it, n){
+    var num = ('0' + (n + 1)).slice(-2);
+    var bts = it.more && it.more.length ? (it.more.length + ' en coulisses') : '';
+    if(it.soon){
+      return '<div class="row soon"><span class="num">' + num + '</span><span class="ttl">Bientôt</span>' +
+             '<span class="cat">' + esc(it.cat) + '</span><span class="yr"></span><span class="arw"></span></div>';
     }
+    return '<button class="row" data-k="' + esc(it.key) + '">' +
+           '<span class="num">' + num + '</span>' +
+           '<span class="ttl">' + esc(it.title) + '</span>' +
+           '<span class="cat">' + esc(it.cat) + (bts ? ' <span class="bts">· ' + esc(bts) + '</span>' : '') + '</span>' +
+           '<span class="yr">' + esc(it.year) + '</span>' +
+           '<span class="arw" aria-hidden="true">→</span></button>';
+  }).join('');
+  listEl.querySelectorAll('.row[data-k]').forEach(function(el){
+    el.addEventListener('click', function(){ lastFocus = el; location.hash = el.dataset.k; });
+    bindPeek(el);
+  });
+}
 
-    vid.addEventListener('play', syncPlayBtn);
-    vid.addEventListener('pause', function(){ syncPlayBtn(); if(soundOn && window.resumeAmbient) window.resumeAmbient(); });
+/* ══════════════════════════════════════════════
+   APERÇU QUI SUIT LA SOURIS (vue liste)
+   Réutilise la vignette déjà en cache : rien à
+   retélécharger. Pour une vidéo, si le survol se
+   prolonge, la vraie boucle prend le relais.
+══════════════════════════════════════════════ */
+var peekEl = document.getElementById('peek');
+var peekT = null, peekT2 = null, peekFor = null;
+var mouseX = 0, mouseY = 0;
 
-    playBtn.addEventListener('click', function(){
-        if(vid.paused){ vid.play().catch(function(){}); if(soundOn && window.pauseAmbient) window.pauseAmbient(); }
-        else { vid.pause(); }
+function placePeek(){
+  peekEl.style.left = Math.min(Math.max(mouseX + 180, 165), window.innerWidth - 165) + 'px';
+  peekEl.style.top  = Math.min(Math.max(mouseY, 110), window.innerHeight - 110) + 'px';
+}
+
+function hidePeek(){
+  clearTimeout(peekT); clearTimeout(peekT2);
+  peekFor = null;
+  peekEl.classList.remove('on');
+  peekT2 = setTimeout(function(){
+    if(!peekEl.classList.contains('on')) peekEl.innerHTML = '';
+  }, 260);
+}
+
+function bindPeek(row){
+  if(reduced || !window.matchMedia('(hover:hover)').matches) return;
+  var it = ITEMS.filter(function(x){ return x.key === row.dataset.k; })[0];
+  if(!it || !it.src) return;
+
+  row.addEventListener('mouseenter', function(){
+    clearTimeout(peekT); clearTimeout(peekT2);
+    peekFor = it.key;
+    peekT = setTimeout(function(){
+      if(peekFor !== it.key) return;
+      thumb(it.thumb || it.src, it.thumb ? 'photo' : it.kind, function(url){
+        if(peekFor !== it.key) return;
+        peekEl.innerHTML = '';
+        if(url){
+          var im = new Image(); im.alt = ''; im.src = url;
+          peekEl.appendChild(im);
+        }
+        placePeek();              /* posé sous le curseur avant d'apparaître */
+        peekEl.classList.add('on');
+        /* Une vidéo prend vie si on reste dessus, sauf si une miniature
+           a été choisie dans le back-office : c'est elle qui prime. */
+        if(it.kind === 'video' && !it.thumb){
+          peekT2 = setTimeout(function(){
+            if(peekFor !== it.key) return;
+            var v = document.createElement('video');
+            v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
+            v.src = vidUrl(it.src, 640);
+            v.addEventListener('canplay', function(){
+              if(peekFor !== it.key) return;
+              peekEl.innerHTML = ''; peekEl.appendChild(v);
+              v.play().catch(function(){});
+            }, { once:true });
+          }, 420);
+        }
+      });
+    }, 90);
+  });
+
+  row.addEventListener('mouseleave', hidePeek);
+}
+
+document.addEventListener('mousemove', function(e){
+  mouseX = e.clientX; mouseY = e.clientY;
+  if(peekEl.classList.contains('on')) placePeek();
+}, { passive:true });
+
+/* ══════════════════════════════════════════════
+   BASCULE MUR / LISTE
+══════════════════════════════════════════════ */
+var bWall = document.getElementById('nav-wall');
+var bList = document.getElementById('nav-list');
+function setMode(m){
+  MODE = m;
+  bWall.setAttribute('aria-pressed', String(m === 'wall'));
+  bList.setAttribute('aria-pressed', String(m === 'list'));
+  /* fondu : on garde les deux vues dans le flux et on joue sur l'opacité */
+  wallEl.classList.toggle('off', m !== 'wall');
+  listWrap.hidden = false;
+  listWrap.classList.toggle('off', m !== 'list');
+  document.getElementById('hint').style.visibility = (m === 'wall') ? '' : 'hidden';
+  document.getElementById('count').style.visibility = (m === 'wall') ? '' : 'hidden';
+  hidePeek();
+  if(m === 'wall') resetWall();
+}
+bWall.addEventListener('click', function(){ setMode('wall'); });
+bList.addEventListener('click', function(){ setMode('list'); });
+document.getElementById('home').addEventListener('click', function(){ setMode('wall'); });
+if(reduced) setMode('list');
+
+/* ══════════════════════════════════════════════
+   CLIENTS
+══════════════════════════════════════════════ */
+function buildLogos(clients){
+  document.getElementById('logos').innerHTML = clients.map(function(c){
+    return '<img src="' + esc(c.logo_url) + '" alt="' + esc(c.name) + '" loading="lazy" decoding="async">';
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════
+   PANNEAU PROJET
+══════════════════════════════════════════════ */
+var view   = document.getElementById('view');
+var infoV  = document.getElementById('infoview');
+var vTitle = document.getElementById('v-title');
+var vCat   = document.getElementById('v-cat');
+var vYear  = document.getElementById('v-year');
+var vNow   = document.getElementById('v-now');
+var vStage = document.getElementById('v-stage');
+var vMore  = document.getElementById('v-more');
+var vSub   = document.getElementById('v-subcount');
+var vMGrid = document.getElementById('v-mgrid');
+var vNextR = document.getElementById('v-nextrow');
+var vNext  = document.getElementById('v-next');
+var moreObs = null;
+
+function open(it){
+  vTitle.textContent = it.title;
+  vNow.textContent   = it.title;
+  vCat.textContent   = it.cat;
+  vYear.textContent  = it.date || it.year || '';
+
+  vStage.innerHTML = '';
+  if(it.kind === 'photo'){
+    var img = document.createElement('img');
+    img.src = imgUrl(it.src, 1800);
+    img.alt = it.title + (it.tools ? ', ' + it.tools : '');
+    vStage.appendChild(img);
+  } else {
+    var v = document.createElement('video');
+    v.controls = true; v.playsInline = true; v.preload = 'metadata'; v.loop = true;
+    v.setAttribute('controlsList', 'nodownload');
+    v.src = vidUrl(it.src, 1600);
+    vStage.appendChild(v);
+    v.play().catch(function(){});
+  }
+
+  /* ── DESCRIPTION ET CRÉDITS ── */
+  var dWrap = document.getElementById('v-desc-wrap');
+  var cWrap = document.getElementById('v-cred-wrap');
+  var about = document.getElementById('v-about');
+
+  if(it.desc){
+    document.getElementById('v-desc').textContent = it.desc;
+    dWrap.hidden = false;
+  } else { dWrap.hidden = true; }
+
+  var creds = it.credits || [];
+  if(creds.length){
+    document.getElementById('v-credits').innerHTML = creds.map(function(c){
+      return '<dt>' + esc(c.role || '—') + '</dt><dd>' + esc(c.name || '') + '</dd>';
+    }).join('');
+    cWrap.hidden = false;
+  } else { cWrap.hidden = true; }
+
+  about.hidden = (dWrap.hidden && cWrap.hidden);
+
+  /* ── EN COULISSES : images ET vidéos ── */
+  vMGrid.innerHTML = '';
+  if(moreObs) moreObs.disconnect();
+  var list = it.more || [];
+  if(list.length){
+    var nv = list.filter(function(m){ return m.type === 'video'; }).length;
+    var ni = list.length - nv;
+    vMore.hidden = false;
+    vSub.textContent = [
+      ni ? (ni + (ni > 1 ? ' images' : ' image')) : '',
+      nv ? (nv + (nv > 1 ? ' vidéos' : ' vidéo')) : ''
+    ].filter(Boolean).join(' · ');
+
+    list.forEach(function(m){
+      var cell = document.createElement('button');
+      cell.className = 'mcell';
+      cell.setAttribute('aria-label', m.type === 'video' ? 'Agrandir la vidéo' : 'Agrandir l’image');
+      var node;
+      if(m.type === 'video'){
+        node = document.createElement('video');
+        node.muted = true; node.loop = true; node.playsInline = true; node.preload = 'none';
+        node.dataset.src = vidUrl(m.src, 800);
+        var tag = document.createElement('span');
+        tag.className = 'tag'; tag.textContent = 'Vidéo';
+        cell.appendChild(node); cell.appendChild(tag);
+      } else {
+        node = document.createElement('img');
+        node.loading = 'lazy'; node.decoding = 'async'; node.alt = '';
+        node.dataset.src = imgUrl(m.src, 900);
+        cell.appendChild(node);
+      }
+      cell.addEventListener('click', function(){ zoom(m); });
+      vMGrid.appendChild(cell);
     });
-    soundBtn.addEventListener('click', function(){
-        soundOn = !soundOn; vid.muted = !soundOn; syncSoundBtn();
-        if(soundOn && !vid.paused){ if(window.pauseAmbient) window.pauseAmbient(); }
-        else { if(window.resumeAmbient) window.resumeAmbient(); }
-    });
-    fsBtn.addEventListener('click', function(){
-        if(document.fullscreenElement){ document.exitFullscreen(); }
-        else if(panel.requestFullscreen){ panel.requestFullscreen(); }
-        else if(panel.webkitRequestFullscreen){ panel.webkitRequestFullscreen(); }
-    });
-    closeBtn.addEventListener('click', function(){ window.closeProject(); });
 
-    window.openProject = function(idx) {
-        var proj = PROJECTS[idx];
-        if(!proj) return;
-        if(typeof isProjectOpen !== 'undefined') isProjectOpen = true;
-        document.body.classList.add('project-open');
-        titleEl.textContent = proj.title;
-        vid.src = proj.videoSrc; vid.muted = true; soundOn = false;
-        syncPlayBtn(); syncSoundBtn();
-        moreGrid.innerHTML = '';
-        proj.more.forEach(function(item){
-            if(item.type === 'img'){
-                var img = document.createElement('img');
-                img.src = item.src; img.className = 'proj-more-item'; img.loading = 'lazy';
-                moreGrid.appendChild(img);
-            } else if(item.type === 'video'){
-                var v = document.createElement('video');
-                v.src = item.src; v.className = 'proj-more-item';
-                v.autoplay = true; v.loop = true; v.muted = true; v.playsInline = true;
-                moreGrid.appendChild(v);
-            }
-        });
-        inner.scrollTop = 0;
-        panel.classList.add('open');
-        vid.play().catch(function(){});
-    };
+    moreObs = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        var n = e.target;
+        if(e.isIntersecting){
+          if(!n.getAttribute('src') && n.dataset.src) n.setAttribute('src', n.dataset.src);
+          if(n.tagName === 'VIDEO') n.play().catch(function(){});
+        } else if(n.tagName === 'VIDEO' && n.getAttribute('src')){
+          n.pause();
+        }
+      });
+    }, { rootMargin:'250px' });
+    vMGrid.querySelectorAll('img,video').forEach(function(n){ moreObs.observe(n); });
+  } else {
+    vMore.hidden = true;
+  }
 
-    window.closeProject = function() {
-        if(typeof isProjectOpen !== 'undefined') isProjectOpen = false;
-        document.body.classList.remove('project-open');
-        vid.pause(); vid.src = '';
-        if(soundOn){ soundOn = false; vid.muted = true; syncSoundBtn(); }
-        if(window.resumeAmbient) window.resumeAmbient();
-        panel.classList.remove('open');
-        if(typeof isMobile !== 'undefined' && isMobile) return;
-        setTimeout(function(){
-            if(typeof isTouching !== 'undefined' && !isTouching && typeof hasInteracted !== 'undefined' && hasInteracted){
-                var isCS = projectNames[currentActiveIndex] === 'COMMING SOON';
-                btnProject.style.display = isCS ? 'none' : 'block';
-                if(!isCS) btnProject.classList.add('visible');
-                projectPreview.classList.add('visible');
-            }
-        }, 800);
-    };
+  var pool = ITEMS.filter(function(x){ return !x.soon; });
+  var idx  = pool.map(function(x){ return x.key; }).indexOf(it.key);
+  var nxt  = pool.length > 1 ? pool[mod(idx + 1, pool.length)] : null;
+  if(nxt && nxt.key !== it.key){
+    vNextR.hidden = false;
+    vNext.querySelector('b').textContent = nxt.title;
+    vNext.onclick = function(){ location.hash = nxt.key; };
+  } else { vNextR.hidden = true; }
 
-    /* Desktop seulement */
-    var btnProj = document.getElementById('btn-project');
-    if(btnProj) btnProj.addEventListener('click', function(){
-        btnProj.classList.remove('visible');
-        document.getElementById('project-preview').classList.remove('visible');
-        window.openProject(window.currentActiveIndex || 0);
-    });
+  closePanel(infoV);
+  openPanel(view);
+  view.scrollTop = 0;
+  document.getElementById('v-back').focus();
+}
+
+function closeView(){
+  closePanel(view, function(){
+    vStage.innerHTML = '';
+    vMGrid.innerHTML = '';
+    if(moreObs) moreObs.disconnect();
+  });
+  if(lastFocus && document.contains(lastFocus)) lastFocus.focus();
+}
+
+/* ── loupe ── */
+var zoomEl = document.getElementById('zoom'), zSlot = document.getElementById('z-slot');
+function zoom(m){
+  zSlot.innerHTML = '';
+  var n;
+  if(m.type === 'video'){
+    n = document.createElement('video');
+    n.controls = true; n.autoplay = true; n.loop = true; n.playsInline = true; n.muted = true;
+    n.src = vidUrl(m.src, 1400);
+  } else {
+    n = document.createElement('img'); n.alt = ''; n.src = imgUrl(m.src, 1800);
+  }
+  zSlot.appendChild(n);
+  openPanel(zoomEl);
+  document.getElementById('z-close').focus();
+}
+function closeZoom(){ closePanel(zoomEl, function(){ zSlot.innerHTML = ''; }); }
+document.getElementById('z-close').addEventListener('click', closeZoom);
+zoomEl.addEventListener('click', function(e){ if(e.target === zoomEl) closeZoom(); });
+
+/* ══════════════════════════════════════════════
+   ROUTAGE
+══════════════════════════════════════════════ */
+function route(){
+  var h = location.hash.replace('#','');
+  hidePeek();
+  if(h === 'infos'){
+    closePanel(view, function(){ vStage.innerHTML = ''; vMGrid.innerHTML = ''; });
+    openPanel(infoV);
+    document.getElementById('i-back').focus();
+    return;
+  }
+  var it = ALL.filter(function(x){ return x.key === h; })[0];
+  if(it && !it.soon){ open(it); }
+  else { closeView(); closePanel(infoV); }
+}
+function backHome(){
+  history.pushState(null, '', location.pathname + location.search);
+  closeView(); closePanel(infoV);
+  if(lastFocus && document.contains(lastFocus)) lastFocus.focus();
+}
+document.getElementById('v-back').addEventListener('click', backHome);
+document.getElementById('i-back').addEventListener('click', backHome);
+document.getElementById('nav-info').addEventListener('click', function(){ location.hash = 'infos'; });
+window.addEventListener('hashchange', route);
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Escape') return;
+  if(isOpen(zoomEl)){ closeZoom(); return; }
+  if(isOpen(view) || isOpen(infoV)) backHome();
+});
+
+boot();
 })();
-}); // fin _projectsReady.then
 </script>
-
-<script type="module" src="/src/three-scene.js"></script>
 </body>
 </html>

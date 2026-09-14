@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Portfolio - Frantz</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            overflow: hidden; width: 100%; height: 100%;
+            overscroll-behavior-x: none;
+            background: #050505;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            text-transform: uppercase; font-weight: 500; color: white;
+            -webkit-font-smoothing: antialiased;
+        }
+        canvas.webgl {
+            position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh; z-index: 1; outline: none;
+        }
+
+    /* ── LOADER ── */
+    #loader {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: #050505; z-index: 9999;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        transition: opacity 0.8s ease, visibility 0.8s ease;
+    }
+    #loader.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .loader-logo { font-size: 1.2rem; letter-spacing: 6px; margin-bottom: 60px;
+        opacity: 0; animation: fadeInLogo 0.8s ease forwards 0.3s; }
+    @keyframes fadeInLogo { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    .loader-bar-container { width: 200px; height: 1px; background: rgba(255,255,255,0.15); position: relative; overflow: hidden; }
+    .loader-bar { position: absolute; top:0; left:0; height:100%; width:0%; background:white; transition:width 0.4s ease; }
+    .loader-percent { font-size:.7rem; letter-spacing:3px; margin-top:20px; color:rgba(255,255,255,0.4); }
+    .loader-label   { font-size:.65rem; letter-spacing:2px; margin-top:8px; color:rgba(255,255,255,0.2); min-height:16px; }
+
+    /* ── SOUND CONSENT ── */
+    #sound-consent {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: #050505; z-index: 10000;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        transition: opacity 0.8s ease, visibility 0.8s ease;
+    }
+    #sound-consent.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    #consent-bg-video {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        object-fit: cover; opacity: 0.18; pointer-events: none;
+    }
+    .consent-logo {
+        height: 150px; width: auto; margin-bottom: 30px;
+        opacity: 0; animation: fadeInLogo 0.8s ease forwards 0.3s;
+    }
+    .consent-question {
+        font-size: .52rem; letter-spacing: 3px; color: rgba(255,255,255,0.3);
+        text-transform: uppercase; margin-bottom: 44px;
+        opacity: 0; animation: fadeInLogo 0.8s ease forwards 0.65s;
+    }
+    .consent-btns {
+        display: flex; gap: 20px;
+        opacity: 0; animation: fadeInLogo 0.8s ease forwards 1s;
+    }
+    .consent-btn {
+        font-size: .52rem; letter-spacing: 3px; font-family: inherit;
+        text-transform: uppercase; cursor: pointer; background: none;
+        border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.45);
+        padding: 13px 30px; transition: border-color .25s, color .25s;
+    }
+    .consent-btn:hover { border-color: rgba(255,255,255,0.8); color: white; }
+    .consent-btn.primary { border-color: rgba(255,255,255,0.55); color: rgba(255,255,255,0.85); }
+    @media (max-width: 768px) {
+        .consent-sound-group { display: none !important; }
+        .consent-enter-group { display: flex !important; }
+    }
+
+    /* ── SWIPE HINT ── */
+    #swipe-hint {
+        position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+        z-index: 200; display: flex; flex-direction: column; align-items: center; gap: 14px;
+        pointer-events: none; opacity: 0; transition: opacity 0.6s ease;
+    }
+    #swipe-hint.visible { opacity: 1; }
+    #swipe-hint.hidden  { opacity: 0; }
+    .hint-arrows { display: flex; align-items: center; gap: 24px; }
+    .hint-arrow-left svg, .hint-arrow-right svg { width:20px; height:20px; stroke:white; fill:none; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+    .hint-hand { width:36px; height:36px; animation:swingHand 2.2s ease-in-out infinite; }
+    .hint-hand svg { width:36px; height:36px; fill:white; opacity:0.9; }
+    @keyframes swingHand { 0%{transform:translateX(0)} 20%{transform:translateX(-18px)} 40%{transform:translateX(0)} 60%{transform:translateX(18px)} 80%{transform:translateX(0)} 100%{transform:translateX(0)} }
+    .hint-arrow-left  { animation: pulseLeft  2.2s ease-in-out infinite; }
+    .hint-arrow-right { animation: pulseRight 2.2s ease-in-out infinite; }
+    @keyframes pulseLeft  { 0%{opacity:.2} 20%{opacity:1} 40%{opacity:.2} 100%{opacity:.2} }
+    @keyframes pulseRight { 0%{opacity:.2} 60%{opacity:.2} 70%{opacity:1} 80%{opacity:.2} 100%{opacity:.2} }
+    .hint-label { font-size:.6rem; letter-spacing:3px; color:rgba(255,255,255,0.35); }
+
+    /* ── SOUND HINT ── */
+    #sound-hint {
+        position: fixed; bottom: 100px; right: 45px;
+        z-index: 200; display: flex; flex-direction: column; align-items: center; gap: 8px;
+        pointer-events: none; opacity: 0; transition: opacity 0.6s ease;
+    }
+    #sound-hint.visible { opacity: 1; }
+    .sound-arrow { 
+        width: 20px; height: 20px; fill: none; stroke: white; 
+        stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+        animation: pointDown 1.5s ease-in-out infinite;
+    }
+    @keyframes pointDown {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(10px); }
+    }
+    #sound-hint .hint-label { font-size: .5rem; letter-spacing: 2px; color: rgba(255,255,255,0.5); }
+
+    /* ── HEADER ── */
+    #site-header {
+        position: fixed; top:0; left:0; width:100%;
+        display: flex; justify-content: space-between; align-items: flex-start;
+        padding: 30px 40px; font-size: 14px; letter-spacing: 1px;
+        z-index: 100; pointer-events: none; mix-blend-mode: difference;
+    }
+    #site-header * { pointer-events: auto; cursor: pointer; }
+    .logo { font-weight: bold; line-height: 1; }
+
+    /* ── SOUND TOGGLE ── */
+    #sound-toggle {
+        position: fixed; bottom:50px; right:50px;
+        background: none; border: none; color: white; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        opacity: 0.5; transition: opacity 0.3s; padding: 5px; z-index: 201;
+    }
+    #sound-toggle:hover { opacity: 1; }
+    #sound-toggle svg { width: 18px; height: 18px; fill: currentColor; }
+
+    /* ── BOUTON RETOUR ── */
+    #grid-back {
+        display: block;
+        margin-top: 10px;
+        font-size: .6rem;
+        letter-spacing: 3px;
+        color: rgba(255,255,255,0.45);
+        cursor: pointer;
+        padding: 5px 0;
+        border: none; background: none;
+        text-align: left;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .4s ease, color .3s;
+        text-transform: uppercase;
+    }
+    #grid-back::before { content: '← '; }
+    #grid-back.visible { opacity: 1; pointer-events: auto; }
+    #grid-back:hover   { color: white; }
+
+    .nav-links { transition: opacity 0.4s ease; }
+    body.project-open .nav-links { display:none; }
+    .nav-links a { color:white; text-decoration:none; margin:0 5px; opacity:.5; transition:opacity .3s; position:relative; }
+    .nav-links span { opacity:.3; }
+    .nav-links a::after {
+        content:''; position:absolute; bottom:-3px; left:0;
+        width:100%; height:1px; background:white;
+        transform:scaleX(0); transform-origin:left;
+        transition:transform 0.35s ease;
+    }
+    .nav-links a:hover, .nav-links a.active { opacity:1; }
+    .nav-links a:hover::after, .nav-links a.active::after { transform:scaleX(1); }
+    .info-link { color:white; text-decoration:none; margin-left:30px; opacity:.5; transition:opacity .3s; position:relative; }
+    .info-link::after {
+        content:''; position:absolute; bottom:-3px; left:0;
+        width:100%; height:1px; background:white;
+        transform:scaleX(0); transform-origin:left;
+        transition:transform 0.35s ease;
+    }
+    .info-link:hover, .info-link.active { opacity:1; }
+    .info-link:hover::after, .info-link.active::after { transform:scaleX(1); }
+    .time { font-variant-numeric:tabular-nums; width:140px; text-align:right; }
+
+    /* ── UI 3D ── */
+    #ui-layer { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; transition:opacity .5s; z-index:10; }
+    #btn-project {
+        position:absolute; bottom:15%; left:50%; transform:translateX(-50%) translateY(20px);
+        padding:15px 40px; background:rgba(255,255,255,0.1);
+        border:1px solid rgba(255,255,255,0.5); color:white;
+        font-family:inherit; font-size:1rem; letter-spacing:2px; text-transform:uppercase;
+        border-radius:50px; opacity:0; transition:.5s; backdrop-filter:blur(5px);
+        cursor:pointer; pointer-events:auto;
+    }
+    #btn-project.visible { opacity:1; transform:translateX(-50%) translateY(0); }
+    #btn-project:hover { background:white; color:black; }
+    #project-preview {
+        position:absolute; top:48%; left:60%; transform:translateY(-50%) translateX(20px);
+        font-size:1.5rem; letter-spacing:1px; opacity:0; transition:.5s; width:300px; line-height:1.2;
+    }
+    #project-preview.visible { opacity:1; transform:translateY(-50%) translateX(0); }
+
+    /* ── PAGES génériques ── */
+    .page-section {
+        position:fixed; top:0; left:0; width:100%; height:100%;
+        background:#050505; z-index:50; display:flex; flex-direction:column;
+        padding:120px 40px 40px 40px;
+        opacity:0; pointer-events:none; transition:opacity .5s ease; overflow-y:auto;
+        will-change: opacity;
+    }
+    .page-section.active { opacity:1; pointer-events:auto; }
+    .index-item { display:flex; justify-content:space-between; border-bottom:1px solid #333; padding:20px 0; font-size:1.2rem; cursor:pointer; transition:.3s; }
+    .index-item:hover { color:#aaa; border-color:#fff; }
+    /* ── PAGE INFO ── */
+    #page-info {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+    #info-left {
+        display: flex; flex-direction: column; justify-content: space-between;
+        padding: 120px 50px 60px 50px;
+        border-right: 1px solid rgba(255,255,255,0.07);
+    }
+    #info-bio {
+        display: flex; grid-template-columns: 1fr 1fr; gap: 32px;
+        margin: 0;
+    }
+    #info-bio p {
+        font-size: clamp(1.1rem, 1.9vw, 2rem);
+        font-weight: 700; line-height: 1.13; letter-spacing: -0.01em;
+        color: white; margin: 0;
+    }
+    #info-clients {
+        margin-top: 48px;
+    }
+    #info-clients h3 {
+        font-size: .5rem; letter-spacing: 5px; color: rgba(255,255,255,0.25);
+        margin-bottom: 24px;
+    }
+    .clients-grid {
+        display: flex; flex-wrap: wrap; gap: 20px 28px; align-items: center;
+    }
+    .clients-grid img {
+        width: 90px; height: 36px;
+        object-fit: contain; object-position: center;
+        filter: none;
+        opacity: 0.35;
+        transition: opacity .3s;
+    }
+    .clients-grid img:hover { opacity: 0.75; }
+    #info-meta {
+        font-size: .56rem; letter-spacing: 4px;
+        color: rgba(255,255,255,0.3);
+        display: flex; gap: 32px;
+    }
+    #info-meta a { color: inherit; text-decoration: none; transition: color .2s; }
+    #info-meta a:hover { color: white; }
+    #info-right {
+        position: relative; overflow: hidden;
+    }
+    #info-cube-canvas {
+        position: absolute; inset: 0; width: 100%; height: 100%;
+        display: block;
+    }
+
+    /* ── PAGE PHOTO WHEEL ── */
+    #page-photo { padding: 0 !important; overflow: hidden !important; }
+
+    /* ── Carrousel plein écran ── */
+    #photo-carousel { position: absolute; inset: 0; z-index: 1; overflow: hidden; }
+    .carousel-slide {
+        position: absolute; top: 0; left: 0;
+        width: calc(100% / 3); height: 100%;
+        overflow: hidden;
+        will-change: transform;
+        transition: opacity 0.15s ease;
+    }
+    #photo-carousel.is-scrolling .carousel-slide { opacity: 0; pointer-events: none; }
+    .carousel-slide img {
+        width: 100%; height: 100%;
+        object-fit: cover; display: block;
+        pointer-events: none; user-select: none; -webkit-user-drag: none;
+    }
+
+    /* ── Infos ── */
+    #photo-info-panel {
+        position: absolute; bottom: 52px; left: 50px;
+        z-index: 20; pointer-events: none;
+    }
+    #photo-info-name {
+        font-size: clamp(.65rem, 1.1vw, .88rem);
+        letter-spacing: 3px; color: rgba(255,255,255,0.85); margin-bottom: 7px;
+    }
+    #photo-info-meta { font-size: .52rem; letter-spacing: 2px; color: rgba(255,255,255,0.32); }
+    #photo-category-label {
+        position: absolute; top: 108px; right: 50px;
+        font-size: .52rem; letter-spacing: 5px;
+        color: rgba(255,255,255,0.22); z-index: 20; pointer-events: none;
+    }
+
+    /* ── Roue de vignettes ── */
+    #photo-wheel-area { position: absolute; inset: 0; z-index: 10; overflow: hidden; pointer-events: none; }
+    .wheel-thumb {
+        position: absolute; left: 0; top: 0;
+        width: 52px; height: 70px;
+        overflow: hidden; cursor: pointer;
+        pointer-events: auto;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.55);
+        opacity: 0.6;
+        transition: opacity 0.2s ease, outline 0.2s ease;
+        will-change: transform;
+    }
+    .wheel-thumb img {
+        position: absolute; inset: 0; width: 100%; height: 100%;
+        object-fit: cover; display: block;
+        pointer-events: none; user-select: none; -webkit-user-drag: none;
+    }
+    .wheel-thumb.is-active { outline: 1px solid rgba(255,255,255,0.75); opacity: 1; }
+
+    /* ── PANNEAU PROJET (template unique) ── */
+    #project-panel { position:fixed; top:0; left:0; width:100%; height:100%; z-index:105; background:#000; transform:translateY(100%); transition:transform .8s cubic-bezier(.86,0,.07,1); overflow:hidden; }
+    #project-panel.open { transform:translateY(0); }
+    #project-inner { position:absolute; top:0; left:0; width:100%; height:100%; overflow-y:auto; overflow-x:hidden; scroll-behavior:smooth; }
+    #project-hero { position:relative; height:100vh; flex-shrink:0; }
+    #project-video-player { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; }
+    #project-controls {
+        position:absolute; bottom:50px; left:50%; transform:translateX(-50%);
+        display:flex; gap:16px; align-items:center; z-index:2;
+    }
+    #project-controls button {
+        background:rgba(0,0,0,0.45); border:1px solid rgba(255,255,255,0.35); color:white;
+        padding:10px 22px; cursor:pointer; font-family:inherit; letter-spacing:2px;
+        font-size:.65rem; text-transform:uppercase; transition:.3s; backdrop-filter:blur(8px);
+    }
+    #project-controls button:hover { background:rgba(255,255,255,0.15); border-color:rgba(255,255,255,0.7); }
+    #project-controls button.active { border-color:white; background:rgba(255,255,255,0.1); }
+    #project-title-display {
+        position:absolute; top:32px; left:50%; transform:translateX(-50%);
+        font-size:.65rem; letter-spacing:4px; color:rgba(255,255,255,0.4);
+        z-index:2; white-space:nowrap; pointer-events:none;
+    }
+    #project-scroll-hint {
+        position:absolute; bottom:18px; left:50%; transform:translateX(-50%);
+        font-size:.55rem; letter-spacing:3px; color:rgba(255,255,255,0.3);
+        z-index:2; animation:projScrollPulse 2s ease-in-out infinite; pointer-events:none;
+    }
+    @keyframes projScrollPulse { 0%,100%{opacity:.3;transform:translateX(-50%) translateY(0)} 50%{opacity:.7;transform:translateX(-50%) translateY(6px)} }
+    #project-more { background:#0a0a0a; padding:80px 40px 80px; min-height:60vh; }
+    #project-more h2 { font-size:.65rem; letter-spacing:5px; color:rgba(255,255,255,0.3); margin-bottom:40px; }
+    #project-more-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
+    .proj-more-item { aspect-ratio:16/9; object-fit:cover; width:100%; background:#111; display:block; }
+    #project-close-btn {
+        position:absolute; top:24px; left:40px;
+        background:transparent; border:1px solid rgba(255,255,255,0.4); color:white;
+        cursor:pointer; font-family:inherit; font-size:.6rem; letter-spacing:3px;
+        text-transform:uppercase; transition:.3s; z-index:3;
+        padding:8px 20px; border-radius:30px;
+    }
+    #project-close-btn:hover { background:white; color:black; border-color:white; }
+
+
+
+    /* ══════════════════════════════════
+       MOBILE (≤768px)
+    ══════════════════════════════════ */
+    @media (max-width:768px) {
+
+        /* ── Éléments desktop cachés ── */
+        canvas.webgl,
+        #swipe-hint,
+        #sound-hint,
+        #ui-layer,
+        .nav-links,
+        .time,
+        #grid-back,
+        #project-preview,
+        #photo-carousel,
+        #photo-wheel-area,
+        #photo-info-panel,
+        #photo-category-label { display:none !important; }
+
+        /* ── Annule le overflow:hidden du desktop ── */
+        html, body {
+            overflow: auto !important;
+            height: auto !important;
+        }
+
+        /* ── Header mobile ── */
+        #site-header { padding:16px 20px; font-size:12px; align-items:center; }
+
+        /* ── Burger ── */
+        #burger-btn {
+            display: flex; flex-direction: column; justify-content: center; gap: 5px;
+            background: none; border: none; cursor: pointer; padding: 4px; z-index: 201;
+        }
+        #burger-btn span {
+            display: block; width: 22px; height: 1.5px; background: white;
+            transition: transform .35s ease, opacity .35s ease;
+        }
+        body.menu-open #burger-btn span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+        body.menu-open #burger-btn span:nth-child(2) { opacity: 0; }
+        body.menu-open #burger-btn span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+        /* ── Drawer menu ── */
+        #mobile-drawer {
+            position: fixed; top: 0; right: 0; width: 75vw; max-width: 280px; height: 100%;
+            background: #0a0a0a; z-index: 200;
+            display: flex; flex-direction: column; justify-content: center;
+            padding: 60px 40px; gap: 32px;
+            transform: translateX(100%); transition: transform .4s cubic-bezier(.86,0,.07,1);
+        }
+        body.menu-open #mobile-drawer { transform: translateX(0); }
+        #mobile-drawer a {
+            font-size: .7rem; letter-spacing: 4px; color: rgba(255,255,255,0.45);
+            text-decoration: none; font-weight: 500; transition: color .2s;
+        }
+        #mobile-drawer a:hover, #mobile-drawer a.active { color: white; }
+        #drawer-overlay {
+            display: none; position: fixed; inset: 0; z-index: 199; background: rgba(0,0,0,0.5);
+        }
+        body.menu-open #drawer-overlay { display: block; }
+
+        /* ── Pages mobiles — annule le positionnement fixed du desktop ── */
+        .page-section {
+            position: relative !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            display: none !important;
+            height: auto !important;
+            min-height: 100vh;
+            padding: 80px 20px 60px !important;
+            overflow-y: visible !important;
+        }
+        .page-section.mob-active {
+            display: flex !important;
+            flex-direction: column !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+        /* La section vidéo mobile n'est pas une page-section */
+        #mobile-video-section {
+            position: relative !important;
+            min-height: 100vh;
+            padding: 80px 20px 60px !important;
+        }
+        #mobile-video-section.mob-active { display: block !important; }
+
+        /* ── Section vidéo mobile ── */
+        #mobile-video-list { display: flex; flex-direction: column; gap: 20px; }
+        .mobile-proj-card {
+            background: #111; border-radius: 4px; overflow: hidden; cursor: pointer;
+            position: relative;
+        }
+        .mobile-proj-card video {
+            width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block;
+            pointer-events: none;
+        }
+        .mobile-proj-card-title {
+            padding: 14px 16px; font-size: .65rem; letter-spacing: 3px;
+            color: rgba(255,255,255,0.7);
+        }
+        .mobile-proj-card-cta {
+            position: absolute; bottom: 52px; right: 12px;
+            font-size: .5rem; letter-spacing: 2px; color: rgba(255,255,255,0.4);
+            border: 1px solid rgba(255,255,255,0.2); padding: 6px 14px; border-radius: 20px;
+        }
+
+        /* ── Galerie photo mobile ── */
+        #mobile-photo-cats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+        .mobile-cat-btn {
+            font-size: .55rem; letter-spacing: 2px; padding: 7px 16px;
+            border: 1px solid rgba(255,255,255,0.25); background: none; color: rgba(255,255,255,0.5);
+            cursor: pointer; font-family: inherit; transition: .2s; border-radius: 20px;
+            text-transform: uppercase;
+        }
+        .mobile-cat-btn.active { border-color: white; color: white; }
+        #mobile-photo-cats { display: none !important; }
+        #mobile-photo-grid {
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        .mobile-photo-wrap {
+            position: relative; overflow: hidden; border-radius: 2px;
+        }
+        .mobile-photo-item {
+            aspect-ratio: 2/3; object-fit: cover; width: 100%; display: block;
+        }
+        .mobile-photo-info {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            padding: 28px 14px 14px;
+            background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
+            transform: translateY(100%);
+            transition: transform 0.35s ease;
+            pointer-events: none;
+        }
+        .mobile-photo-wrap.info-active .mobile-photo-info {
+            transform: translateY(0);
+        }
+        .mobile-photo-info-name {
+            font-size: .62rem; letter-spacing: 2px; color: #fff;
+            text-transform: uppercase; margin-bottom: 4px;
+        }
+        .mobile-photo-info-meta {
+            font-size: .5rem; letter-spacing: 1.5px; color: rgba(255,255,255,0.45);
+            text-transform: uppercase;
+        }
+
+        /* ── Info page mobile ── */
+        #page-info { display: flex !important; flex-direction: column !important; }
+        #info-right { display: none !important; }
+        #info-left {
+            padding: 80px 24px 60px !important;
+            border-right: none !important;
+            gap: 40px;
+            display: flex; flex-direction: column;
+        }
+        #info-bio p { font-size: 1.15rem !important; line-height: 1.35 !important; }
+        #info-clients { margin-top: 0 !important; }
+        #info-clients h3 { margin-bottom: 20px; }
+        .clients-grid { gap: 16px 20px; }
+        .clients-grid img { width: 60px; height: 24px; }
+        #info-meta {
+            flex-direction: column; gap: 18px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(255,255,255,0.07);
+        }
+        #info-meta a { font-size: .6rem; letter-spacing: 3px; }
+
+        /* ── Panneau projet mobile ── */
+        #project-close-btn { top: 16px; left: 16px; }
+        #project-controls { bottom: 24px; gap: 8px; }
+        #project-controls button { padding: 8px 14px; font-size: .55rem; }
+        /* Cacher plein écran sur mobile */
+        #proj-fs-btn { display: none !important; }
+
+        /* ── Cacher son ambiant sur mobile ── */
+        #sound-toggle, #sound-hint { display: none !important; }
+    }
+
+    /* Desktop : cacher les éléments mobile */
+    @media (min-width:769px) {
+        #burger-btn { display: none; }
+        #mobile-drawer { display: none !important; }
+        #drawer-overlay { display: none !important; }
+        #mobile-video-list { display: none; }
+        #mobile-photo-cats { display: none; }
+        #mobile-photo-grid { display: none; }
+    }
+</style>
+
+</head>
+<body>
+
+<audio id="bg-static-audio" loop>
+    <source src="/Static.wav" type="audio/wav">
+</audio>
+
+
+<div id="sound-consent">
+    <video id="consent-bg-video" autoplay muted loop playsinline>
+        <source src="https://assets.frantzimann.org/loader-screen.mp4" type="video/mp4">
+    </video>
+    <img class="consent-logo" src="https://assets.frantzimann.org/signature.svg" alt="FRANTZ" style="filter: brightness(0) invert(1);">
+    <div class="consent-question">Choisissez votre expérience</div>
+    <!-- Desktop : avec ou sans son -->
+    <div class="consent-btns consent-sound-group">
+        <button class="consent-btn primary" id="consent-sound-on">AVEC SON</button>
+        <button class="consent-btn" id="consent-sound-off">SANS SON</button>
+    </div>
+    <!-- Mobile : simple entrée -->
+    <div class="consent-btns consent-enter-group" style="display:none">
+        <button class="consent-btn primary" id="consent-enter">ENTRER</button>
+    </div>
+</div>
+
+<div id="loader">
+    <div class="loader-logo">FRANTZ</div>
+    <div class="loader-bar-container"><div class="loader-bar" id="loader-bar"></div></div>
+    <div class="loader-percent" id="loader-percent">0%</div>
+    <div class="loader-label" id="loader-label">INITIALISATION</div>
+</div>
+
+<div id="swipe-hint">
+    <div class="hint-arrows">
+        <div class="hint-arrow-left"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+        <div class="hint-hand"><svg viewBox="0 0 64 64"><path d="M30 8 C30 5 34 5 34 8 L34 32 C34 32 40 30 40 36 C40 44 36 56 28 56 C20 56 16 48 16 40 L16 28 C16 25 20 25 20 28 L20 36 C20 36 22 34 22 28 L22 12 C22 9 26 9 26 12 L26 28 C26 28 28 26 28 20 L28 8 C28 5 30 5 30 8 Z" opacity="0.85"/></svg></div>
+        <div class="hint-arrow-right"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+    </div>
+    <div class="hint-label">NAVIGUER</div>
+</div>
+
+<div id="sound-hint">
+    <div class="hint-label">SON</div>
+    <div class="sound-arrow"><svg viewBox="0 0 24 24"><path d="M7 7l5 5 5-5M12 12v10"/></svg></div>
+</div>
+
+<canvas class="webgl"></canvas>
+
+<!-- ── DRAWER MOBILE ── -->
+<div id="drawer-overlay"></div>
+<div id="mobile-drawer">
+    <a id="mob-nav-video" class="active">VIDÉO</a>
+    <a id="mob-nav-photo">PHOTO</a>
+    <a id="mob-nav-info">INFO</a>
+</div>
+
+<header id="site-header">
+    <div class="header-left">
+        <div class="logo" id="main-logo">FRANTZ</div>
+        <button id="grid-back">RETOUR</button>
+    </div>
+    <nav class="navigation">
+        <div class="nav-links">
+            <a id="nav-index"></a>
+            <a id="nav-selects" class="active">VIDÉO</a> <span>/</span>
+            <a id="nav-photo">PHOTO</a>
+            <a id="nav-info" class="info-link">INFO</a>
+            <button id="sound-toggle" title="Activer/Couper le son">
+                <svg id="icon-sound-off" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77zM3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" opacity=".3"/><path d="M4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+                <svg id="icon-sound-on" style="display:none;" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+            </button>
+        </div>
+    </nav>
+    <div class="time" id="clock">00:00:00 (GMT)</div>
+    <button id="burger-btn" aria-label="Menu">
+        <span></span><span></span><span></span>
+    </button>
+</header>
+
+<div id="ui-layer">
+    <button id="btn-project">DÉCOUVRIR LE PROJET</button>
+    <div id="project-preview">NOM DU PROJET</div>
+</div>
+
+<!-- ── SECTION VIDÉO MOBILE ── -->
+<div id="mobile-video-section" class="page-section" style="display:none;">
+    <div id="mobile-video-list"></div>
+</div>
+
+<section id="page-index" class="page-section">
+    <ul class="index-list">
+        <li class="index-item"><span>01. PROJET AUTOMOBILE</span><span>2023</span></li>
+        <li class="index-item"><span>02. ARCHITECTURE MODERNE</span><span>2023</span></li>
+        <li class="index-item"><span>03. OBJECTIF N1 ADIDAS</span><span>2026</span></li>
+        <li class="index-item"><span>04. ANIMATION ABSTRAITE</span><span>2022</span></li>
+        <li class="index-item"><span>05. COURT MÉTRAGE</span><span>2021</span></li>
+    </ul>
+</section>
+
+<section id="page-photo" class="page-section">
+    <div id="photo-carousel"></div>
+    <div id="photo-wheel-area"></div>
+    <div id="photo-info-panel">
+        <div id="photo-info-name"></div>
+        <div id="photo-info-meta"></div>
+    </div>
+    <div id="photo-category-label"></div>
+    <!-- Galerie mobile (visible uniquement sur mobile) -->
+    <div id="mobile-photo-cats"></div>
+    <div id="mobile-photo-grid"></div>
+</section>
+
+<section id="page-info" class="page-section">
+    <div id="info-left">
+        <div id="info-bio">
+            <p>Directeur Artistique & Designer basé à Paris. Design graphique, motion 2D/3D, production audiovisuelle.</p>        </div>
+        <div id="info-clients">
+            <h3>CLIENTS</h3>
+            <div class="clients-grid" id="clients-grid-dynamic"></div>
+        </div>
+        <div id="info-meta">
+            <a href="mailto:contact.frantz75@gmail.com">CONTACT.FRANTZ75@GMAIL.COM</a>
+            <a href="https://www.linkedin.com/in/fran%C3%A7ois-teul%C3%A9/" target="_blank">LINKEDIN</a>
+            <a href="https://www.instagram.com/_fran.tl/" target="_blank">INSTAGRAM</a>
+        </div>
+    </div>
+    <div id="info-right">
+        <canvas id="info-cube-canvas"></canvas>
+    </div>
+</section>
+
+<!-- ── PANNEAU PROJET (template unique) ── -->
+<div id="project-panel">
+    <button id="project-close-btn">← RETOUR</button>
+    <div id="project-inner">
+        <div id="project-hero">
+            <video id="project-video-player" playsinline preload="metadata" loop></video>
+            <div id="project-title-display"></div>
+            <div id="project-controls">
+                <button id="proj-play-btn">PLAY</button>
+                <button id="proj-sound-btn">SON</button>
+                <button id="proj-fs-btn">PLEIN ÉCRAN</button>
+            </div>
+            <div id="project-scroll-hint">↓ &nbsp; EN SAVOIR PLUS</div>
+        </div>
+        <div id="project-more">
+            <h2>EN COULISSES</h2>
+            <div id="project-more-grid"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Les éléments <video> pour les TVs sont créés dynamiquement depuis PROJECTS -->
+
+<script>
+/* ── SOUND SYSTEM ── */
+(function(){
+    const audio = document.getElementById('bg-static-audio');
+    const toggle = document.getElementById('sound-toggle');
+    const iconOff = document.getElementById('icon-sound-off');
+    const iconOn = document.getElementById('icon-sound-on');
+    const soundHint = document.getElementById('sound-hint');
+    let isPlaying = false;
+    let _pausedByVideo = false;
+
+    audio.volume = 0.3;
+
+    window.pauseAmbient = function() {
+        if(isPlaying && !_pausedByVideo) {
+            audio.pause();
+            _pausedByVideo = true;
+        }
+    };
+    window.resumeAmbient = function() {
+        if(_pausedByVideo) {
+            _pausedByVideo = false;
+            audio.play().catch(function(){});
+            isPlaying = true;
+        }
+    }; 
+
+    // Fonction pour activer le son
+    const startAudio = () => {
+        if(!isPlaying) {
+            audio.play().then(() => {
+                isPlaying = true;
+                iconOff.style.display = 'none';
+                iconOn.style.display = 'block';
+                toggle.style.opacity = '1';
+                if(soundHint) soundHint.classList.remove('visible');
+            }).catch(e => console.log("Autoplay bloqué."));
+        }
+    };
+
+    // Exposé pour le consentement
+    window.startAmbient = startAudio;
+
+    // Activer au clic sur le bouton Toggle
+    toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if(isPlaying){
+            audio.pause();
+            iconOff.style.display = 'block';
+            iconOn.style.display = 'none';
+            toggle.style.opacity = '0.5';
+            isPlaying = false;
+        } else {
+            startAudio();
+        }
+    });
+})();
+/* ── CLIENTS dynamiques depuis API ── */
+(function(){
+    var grid = document.getElementById('clients-grid-dynamic');
+    if(!grid) return;
+    fetch('https://portfolio-api.francois-teule.workers.dev/clients')
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            if(!Array.isArray(data) || !data.length) return;
+            grid.innerHTML = '';
+            data.forEach(function(c){
+                var img = document.createElement('img');
+                img.src = c.logo_url; img.alt = c.name; img.loading = 'lazy';
+                grid.appendChild(img);
+            });
+        })
+        .catch(function(){});
+})();
+
+/* ── SOUND CONSENT HANDLER ── */
+(function(){
+    var consent = document.getElementById('sound-consent');
+    var isMob   = window.innerWidth <= 768;
+
+    function dismiss(withSound) {
+        window._soundChoice = withSound ? 'on' : 'off';
+        consent.classList.add('hidden');
+        if(withSound && window.startAmbient) window.startAmbient();
+    }
+
+    if(isMob) {
+        var g = consent.querySelector('.consent-sound-group');
+        var ge = consent.querySelector('.consent-enter-group');
+        if(g)  g.style.display  = 'none';
+        if(ge) ge.style.display = 'flex';
+        var btnEnter = document.getElementById('consent-enter');
+        if(btnEnter) btnEnter.addEventListener('click', function(){ dismiss(false); });
+    } else {
+        var btnOn  = document.getElementById('consent-sound-on');
+        var btnOff = document.getElementById('consent-sound-off');
+        if(btnOn)  btnOn.addEventListener('click',  function(){ dismiss(true);  });
+        if(btnOff) btnOff.addEventListener('click', function(){ dismiss(false); });
+    }
+})();
+
+/* ── CLOCK ── */
+(function(){
+    function u(){ var c=document.getElementById('clock'); if(c) c.innerText=new Date().toLocaleTimeString('en-GB',{timeZone:'UTC',hour12:false})+' (GMT)'; }
+    setInterval(u,1000); u();
+})();
+
+/* ── REINITIALISER LE SITE AU CLIC LOGO ── */
+document.getElementById('main-logo').addEventListener('click', function() { window.location.reload(); });
+
+var PHOTO_META = {
+    'gucci-flora':   { name: 'Gucci Flora Gorgeous Orchid', date: 'Fév. 2026', tools: 'Midjourney · Magnific AI' },
+    'hermes-1':      { name: 'Hermès — Éclat Minéral',      date: 'Fév. 2026', tools: 'Midjourney · Magnific AI' },
+    'issey-1':       { name: 'Issey Miyake — Éditorial',    date: 'Jan. 2026', tools: 'BangGroup · Magnific AI' },
+    'issey-v1':      { name: 'Issey Miyake — V1',           date: 'Jan. 2026', tools: 'Midjourney · PS' },
+    'mfk-1':         { name: 'Maison Francis Kurkdjian',    date: 'Fév. 2026', tools: 'ChatGPT · Magnific AI' },
+    'mfk-2':         { name: 'Maison Francis Kurkdjian',    date: 'Fév. 2026', tools: 'ChatGPT · Magnific AI' },
+    'valentino-1':   { name: 'Valentino — Fragrance 01',    date: 'Fév. 2026', tools: 'Midjourney · Magnific AI' },
+    'valentino-2':   { name: 'Valentino — Fragrance 02',    date: 'Fév. 2026', tools: 'Midjourney · Magnific AI' },
+    'issey-eau':     { name: "Issey Miyake — L'Eau",        date: 'Mar. 2026', tools: 'Midjourney · Magnific AI' },
+    'capture-1':     { name: 'Sans titre 01',               date: '2025',      tools: 'Sony A7 IV' },
+    'capture-2':     { name: 'Sans titre 02',               date: '2025',      tools: 'Sony A7 IV' },
+    'creed-1':     { name: 'Sans titre 01',               date: '2026',      tools: 'Sony A7 IV' },
+    'creed-2':     { name: 'Sans titre 02',               date: '2026',      tools: 'Sony A7 IV' }
+};
+
+var PHOTOS_IA = [
+    { id:'gucci-flora', src:'https://assets.frantzimann.org/perfume/GUCCI/._Gucci%20Flora%20Gorgeous%20Orchid.webp' },
+    { id:'hermes-1',    src:'https://assets.frantzimann.org/perfume/HERMES/hermes-1.webp' },
+    { id:'issey-v1',    src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey1.webp' },
+    { id:'issey-v2',    src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey2.webp' },
+    { id:'mfk-1',       src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis.webp' },
+    { id:'mfk-2',       src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis1.webp' },
+    { id:'valentino-1', src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino1.webp' },
+    { id:'valentino-2', src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino2.webp' },
+    { id:'creed-1', src:'https://assets.frantzimann.org/perfume/CREED/creed-1.webp' },
+    { id:'creed-2',   src:"https://assets.frantzimann.org/perfume/CREED/creed-2.webp" }
+];
+
+var PHOTOS_CAPTURE = [
+    { id:'capture-1', src:'./EXPORT INSTA/1.jpg' },
+    { id:'capture-2', src:'./EXPORT INSTA/2.jpg' },
+    { id:'capture-1', src:'./EXPORT INSTA/1.jpg' },
+    { id:'capture-2', src:'./EXPORT INSTA/2.jpg' },
+    { id:'capture-1', src:'./EXPORT INSTA/1.jpg' },
+    { id:'capture-2', src:'./EXPORT INSTA/2.jpg' },
+    { id:'capture-1', src:'./EXPORT INSTA/1.jpg' },
+    { id:'capture-2', src:'./EXPORT INSTA/2.jpg' }
+];
+
+/* ── PHOTO CAROUSEL + ROUE — données depuis API ── */
+var _ALL_PHOTOS_FALLBACK = [
+    { src:'https://assets.frantzimann.org/perfume/GUCCI/Gucci%20Flora%20Gorgeous%20Orchid.webp', name:'Gucci Flora', date:'Fév. 2026', tools:'Midjourney', cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/HERMES/hermes-1.webp',                          name:'Hermès',      date:'Fév. 2026', tools:'Midjourney', cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey1.webp',                         name:'Issey V1',    date:'Jan. 2026', tools:'Midjourney', cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/ISSEY/eau-dissey2.webp',                         name:'Issey V2',    date:'Jan. 2026', tools:'Midjourney', cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis.webp',               name:'MFK 01',      date:'Fév. 2026', tools:'ChatGPT',    cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/M-F-K%20Paris/maisonfrancis1.webp',              name:'MFK 02',      date:'Fév. 2026', tools:'ChatGPT',    cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino1.webp',                       name:'Valentino 01',date:'Fév. 2026', tools:'Midjourney', cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/VALENTINO/valentino2.webp',                       name:'Valentino 02',date:'Fév. 2026', tools:'Midjourney', cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/CREED/creed-1.webp',                              name:'Creed 01',    date:'2026',       tools:'Sony A7 IV', cat:'' },
+    { src:'https://assets.frantzimann.org/perfume/CREED/creed-2.webp',                              name:'Creed 02',    date:'2026',       tools:'Sony A7 IV', cat:'' },
+];
+
+fetch('https://portfolio-api.francois-teule.workers.dev/media')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+        return (Array.isArray(data) && data.length)
+            ? data.map(function(m){ return { src: m.url, name: m.name, date: m.date, tools: m.tools, cat: '' }; })
+            : _ALL_PHOTOS_FALLBACK;
+    })
+    .catch(function(){ return _ALL_PHOTOS_FALLBACK; })
+    .then(function(ALL_PHOTOS) {
+    var TOTAL = ALL_PHOTOS.length;
+    if(!TOTAL) return;
+
+    var TOTAL = ALL_PHOTOS.length;
+
+    var carouselEl = document.getElementById('photo-carousel');
+    var wheelEl    = document.getElementById('photo-wheel-area');
+    var infName    = document.getElementById('photo-info-name');
+    var infMeta    = document.getElementById('photo-info-meta');
+    var catLbl     = document.getElementById('photo-category-label');
+
+    /* ── Build carousel slides ── */
+    var slides = [], _decodePromises = [];
+    ALL_PHOTOS.forEach(function(p) {
+        var slide = document.createElement('div');
+        slide.className = 'carousel-slide';
+        var img = document.createElement('img');
+        img.src = p.src; img.alt = ''; img.draggable = false;
+        slide.appendChild(img);
+        carouselEl.appendChild(slide);
+        slides.push(slide);
+        _decodePromises.push(img.decode ? img.decode().catch(function(){}) : Promise.resolve());
+    });
+
+    /* ── Roue canvas ── */
+    var thumbs = [];
+    var wCtx = null, wheelCanvas = null;
+    var thumbImages = ALL_PHOTOS.map(function(p) {
+        var img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = p.src;
+        _decodePromises.push(img.decode ? img.decode().catch(function(){}) : Promise.resolve());
+        return img;
+    });
+
+    wheelCanvas = document.createElement('canvas');
+    wheelCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:10;pointer-events:none;';
+    wheelEl.appendChild(wheelCanvas);
+    wCtx = wheelCanvas.getContext('2d');
+
+    function resizeWheelCanvas() {
+        var dpr = window.devicePixelRatio || 1;
+        wheelCanvas.width  = window.innerWidth  * dpr;
+        wheelCanvas.height = window.innerHeight * dpr;
+        wCtx.scale(dpr, dpr);
+    }
+    resizeWheelCanvas();
+    window.addEventListener('resize', resizeWheelCanvas);
+
+    /* Click sur la roue canvas → hit-test (sur photoPage, pas le canvas) */
+    document.getElementById('page-photo').addEventListener('click', function(e) {
+        if(window.currentPage !== 'photo') return;
+        var rect = wheelCanvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var my = e.clientY - rect.top;
+        var TAU = 2 * Math.PI, HW = 26, HH = 35;
+        var baseAngle = -(wPos / TOTAL) * TAU - Math.PI / 2;
+        for(var s = 0; s < TOTAL; s++) {
+            var angle = baseAngle + (s / TOTAL) * TAU;
+            var x = _cx + _rx * Math.cos(angle) - HW;
+            var y = _cy + _ry * Math.sin(angle) - HH;
+            if(mx >= x && mx <= x + HW*2 && my >= y && my <= y + HH*2) {
+                var diff = s - wPos;
+                diff = diff - Math.round(diff / TOTAL) * TOTAL;
+                wTarget = wPos + diff;
+                clearTimeout(snapTimer);
+                startPhotoWheelIfNeeded();
+                break;
+            }
+        }
+    });
+
+    /* ── Attendre que toutes les images soient décodées ── */
+    var _preloaded = false, _onPreloaded = null;
+    Promise.all(_decodePromises).then(function() {
+        _preloaded = true;
+        if(_onPreloaded) _onPreloaded();
+        /* Pre-warm : positionne tous les éléments pendant que la section est     */
+        /* encore invisible. Chrome (will-change:opacity) rasterise en idle       */
+        /* → zéro paint au premier scroll de l'utilisateur.                       */
+        render();
+    });
+
+    /* Retour d'onglet : Chrome évicte le cache GPU → relancer le warm-up */
+    document.addEventListener('visibilitychange', function() {
+        if(document.visibilityState === 'visible' && window.currentPage === 'photo') {
+            startPhotoWheelIfNeeded();
+        }
+    });
+
+    /* ── Cache viewport ── */
+    var _VW, _VH, _cx, _cy, _rx, _ry, _slideW, _slideOff;
+    function updateViewport() {
+        _VW = window.innerWidth; _VH = window.innerHeight;
+        _slideW   = _VW / 3;                    /* largeur d'une slide */
+        _slideOff = _VW / 2 - _slideW / 2;      /* décalage pour centrer la slide active */
+        _cx = _VW * 0.50; _cy = _VH * 0.50;
+        _rx = _VW * 0.41; _ry = _VH * 0.36;
+    }
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+
+    /* ── Cache style pour éviter les recalculs DOM inutiles ── */
+    var _lastTx      = new Array(TOTAL).fill('');
+    var _lastSlide   = new Array(TOTAL).fill('');
+    var _lastIsAct   = new Array(TOTAL).fill(false);
+
+    var wPos = 0, wTarget = 0, lastActive = -1, snapTimer;
+
+    function setInfo(idx) {
+        if(idx === lastActive) return;
+        lastActive = idx;
+        var p = ALL_PHOTOS[idx];
+        infName.textContent = p.name  || '';
+        infMeta.textContent = [p.date, p.tools].filter(Boolean).join('  ·  ');
+        catLbl.textContent  = p.cat   || '';
+    }
+
+    function render() {
+        var TAU = 2 * Math.PI;
+        var HW = 26, HH = 35;
+
+        /* Index de la slide centrée */
+        var centerIdx = (((Math.round(wPos) % TOTAL) + TOTAL) % TOTAL);
+        setInfo(centerIdx);
+
+        /* ── Carrousel slides ── */
+        for(var i = 0; i < slides.length; i++) {
+            var diff = i - wPos;
+            diff = diff - Math.round(diff / TOTAL) * TOTAL;
+            var sx = (_slideOff + diff * _slideW).toFixed(0);
+            var stx = 'translate3d(' + sx + 'px,0,0)';
+            if(stx !== _lastSlide[i]) { slides[i].style.transform = stx; _lastSlide[i] = stx; }
+        }
+
+        /* ── Roue canvas ── */
+        if(wCtx) {
+            wCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+            var baseAngle = -(wPos / TOTAL) * TAU - Math.PI / 2;
+            for(var s = 0; s < TOTAL; s++) {
+                var angle = baseAngle + (s / TOTAL) * TAU;
+                var x = _cx + _rx * Math.cos(angle) - HW;
+                var y = _cy + _ry * Math.sin(angle) - HH;
+                var img = thumbImages[s];
+                if(!img.complete) continue;
+                wCtx.globalAlpha = (s === centerIdx) ? 1.0 : 0.6;
+                wCtx.drawImage(img, x, y, HW * 2, HH * 2);
+                if(s === centerIdx) {
+                    wCtx.globalAlpha = 1;
+                    wCtx.strokeStyle = 'rgba(255,255,255,0.75)';
+                    wCtx.lineWidth = 1;
+                    wCtx.strokeRect(x + 0.5, y + 0.5, HW * 2 - 1, HH * 2 - 1);
+                }
+            }
+            wCtx.globalAlpha = 1;
+        }
+    }
+
+    /* ── Boucle RAF avec delta-time et arrêt auto ── */
+    var rafWheel = null, _lastTime = 0;
+    var LERP_SPEED = 5.5;
+
+    function tickWheel(now) {
+        var dt = Math.min((now - _lastTime) / 1000, 0.05);
+        _lastTime = now;
+        var diff = wTarget - wPos;
+        if(Math.abs(diff) < 0.0005) {
+            wPos = wTarget;
+            render(); rafWheel = null; return;
+        }
+        wPos += diff * (1 - Math.exp(-LERP_SPEED * dt));
+        render();
+        rafWheel = requestAnimationFrame(tickWheel);
+    }
+
+    function startPhotoWheelIfNeeded() {
+        if(!rafWheel) { _lastTime = performance.now(); rafWheel = requestAnimationFrame(tickWheel); }
+    }
+
+    window.startPhotoWheel = startPhotoWheelIfNeeded;
+    window.stopPhotoWheel  = function(){ if(rafWheel){ cancelAnimationFrame(rafWheel); rafWheel = null; } };
+
+    /* ── Événements de navigation ── */
+    var photoPage = document.getElementById('page-photo');
+
+    photoPage.addEventListener('wheel', function(e) {
+        if(window.currentPage !== 'photo') return;
+        e.preventDefault();
+        var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+        wTarget -= d * 0.018;
+        clearTimeout(snapTimer);
+        snapTimer = setTimeout(function(){ wTarget = Math.round(wTarget); startPhotoWheelIfNeeded(); }, 350);
+        startPhotoWheelIfNeeded();
+    }, { passive: false });
+
+    var tx0 = 0;
+    photoPage.addEventListener('touchstart', function(e){ tx0 = e.touches[0].clientX; }, { passive: true });
+    photoPage.addEventListener('touchmove', function(e) {
+        if(window.currentPage !== 'photo') return;
+        var dx = e.touches[0].clientX - tx0;
+        wTarget -= dx * 0.028; tx0 = e.touches[0].clientX;
+        clearTimeout(snapTimer);
+        snapTimer = setTimeout(function(){ wTarget = Math.round(wTarget); startPhotoWheelIfNeeded(); }, 350);
+        startPhotoWheelIfNeeded();
+    }, { passive: true });
+
+    window.initPhotoWheel = function(){
+        lastActive = -1;
+        _lastTx.fill(''); _lastSlide.fill(''); _lastIsAct.fill(false);
+        function go() { render(); startPhotoWheelIfNeeded(); }
+        if(_preloaded) { go(); } else { _onPreloaded = go; }
+    };
+}); // fin fetch media .then
+
+/* ── NAVIGATION ── */
+var currentPage = 'selects';
+var navLinks = { selects:document.getElementById('nav-selects'), index:document.getElementById('nav-index'), photo:document.getElementById('nav-photo'), info:document.getElementById('nav-info') };
+var pageSections = { selects:document.getElementById('ui-layer'), index:document.getElementById('page-index'), photo:document.getElementById('page-photo'), info:document.getElementById('page-info') };
+function switchPage(target) {
+    currentPage = target;
+    Object.values(navLinks).forEach(function(l){ l.classList.remove('active'); });
+    if(navLinks[target]) navLinks[target].classList.add('active');
+    pageSections.selects.style.opacity = target === 'selects' ? '1' : '0';
+    pageSections.selects.style.pointerEvents = target === 'selects' ? 'auto' : 'none';
+    ['index','photo','info'].forEach(function(p){ pageSections[p].classList.toggle('active', p === target); });
+
+    /* ── Gestion des ressources selon l'onglet ── */
+    if(target === 'selects') {
+        if(window.start3D)       window.start3D();
+        if(window.resumeVideos)  window.resumeVideos();
+        if(window.stopPhotoWheel) window.stopPhotoWheel();
+    } else {
+        if(window.stop3D)        window.stop3D();
+        if(window.pauseVideos)   window.pauseVideos();
+        if(window.stopPhotoWheel) window.stopPhotoWheel();
+    }
+    if(target === 'photo' && window.initPhotoWheel) window.initPhotoWheel();
+    if(target === 'info'  && window.startInfoCube)  window.startInfoCube();
+    if(target !== 'info'  && window.stopInfoCube)   window.stopInfoCube();
+}
+Object.keys(navLinks).forEach(function(k){ if(navLinks[k]) navLinks[k].addEventListener('click', function(){ switchPage(k); }); });
+
+/* ══════════════════════════════════════════════
+   PROJETS — chargés depuis l'API (fallback statique si hors-ligne)
+   ══════════════════════════════════════════════ */
+var PROJECTS_FALLBACK = [
+    {
+        title: 'BOILER ROOM',
+        videoSrc: 'https://assets.frantzimann.org/boiler-room-2025/boiler-2025-2.mp4',
+        more: [
+            { type:'video', src:'https://assets.frantzimann.org/boiler-room-2025/boiler-2025-1.mp4' },
+            { type:'video', src:'https://assets.frantzimann.org/boiler-room-2025/boiler-2025-3.mp4' },
+            { type:'video', src:'https://assets.frantzimann.org/boiler-room-2025/boiler-2025-4.mp4' },
+            { type:'img',   src:'https://assets.frantzimann.org/boiler-room-2025/boiler-2025-4.webp' },
+            { type:'video', src:'https://assets.frantzimann.org/boiler-room-2025/boiler-2025-5.mp4' },
+            { type:'img',   src:'https://assets.frantzimann.org/boiler-room-2025/boiler-2025-5.webp' },
+        ]
+    },
+    {
+        title: 'PICKLES SESH × STUDIO 56',
+        videoSrc: 'https://assets.frantzimann.org/pickles-nov-2025/pickles-nov-2025.mp4',
+        more: []
+    },
+    {
+        title: 'OBJECTIF N1 — ADIDAS BACKSTAGE',
+        videoSrc: 'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-202610.mp4',
+        more: [
+            { type:'video', src:'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-20261.mp4' },
+            { type:'video', src:'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-20262.mp4' },
+            { type:'video', src:'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-20263.mp4' },
+            { type:'video', src:'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-20264.mp4' },
+            { type:'video', src:'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-20265.mp4' },
+            { type:'video', src:'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-20266.mp4' },
+            { type:'video', src:'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-20267.mp4' },
+            { type:'img',   src:'https://assets.frantzimann.org/shoot-nina-2026/shooting-nina-20269.png' },
+        ]
+    },
+    {
+        title: 'HERMÈS × RICK OWENS — CARRÉ',
+        videoSrc: 'https://assets.frantzimann.org/carre-hermes/carre-hermes2.mp4',
+        more: []
+    },
+    {
+        title: 'PROJET-WINDOWS',
+        videoSrc: 'https://assets.frantzimann.org/window-projetct/window-project.mp4',
+        more: []
+    },
+    {
+        title: 'MONUMENT-EXTENDED',
+        videoSrc: 'https://assets.frantzimann.org/monument-extended/typo-anim_7.mp4',
+        more: [
+            { type:'video', src:'https://assets.frantzimann.org/monument-extended/typo-anim_1.mp4' },
+            { type:'video', src:'https://assets.frantzimann.org/monument-extended/typo-anim_2.mp4' },
+            { type:'video', src:'https://assets.frantzimann.org/monument-extended/typo-anim_3.mp4' },
+            { type:'video', src:'https://assets.frantzimann.org/monument-extended/typo-anim_4.mp4' },
+            { type:'video', src:'https://assets.frantzimann.org/monument-extended/typo-anim_5.mp4' },
+            { type:'video', src:'https://assets.frantzimann.org/monument-extended/typo-anim_6.mp4' },
+        ]
+    },
+    {
+        title: 'MAFIA DE LA BRAISE - HIPPOPOTAMUS',
+        videoSrc: '/noproj.mp4',
+        more: []
+    },
+    {
+        title: 'COMMING SOON',
+        videoSrc: '/noproj.mp4',
+        more: []
+    }
+    /* — pour ajouter un projet : copier un bloc { title, videoSrc, more:[] } — */
+];
+
+// Disponible immédiatement (fallback), remplacé dès que l'API répond
+var PROJECTS = PROJECTS_FALLBACK;
+window.PROJECTS = PROJECTS;
+
+window._projectsReady = fetch('https://portfolio-api.francois-teule.workers.dev/projects')
+    .then(function(res){ return res.json(); })
+    .then(function(data){
+        if(Array.isArray(data) && data.length){
+            PROJECTS = data.map(function(p){
+                return {
+                    title:    p.title,
+                    videoSrc: p.video_url || '',
+                    more:     Array.isArray(p.more) ? p.more : [],
+                    status:   p.status || 'published'
+                };
+            });
+            window.PROJECTS = PROJECTS;
+        }
+    })
+    .catch(function(){ /* garde le fallback */ });
+
+/* ══════════════════════════════════════════════
+   MOBILE + PANEL — initialisés après chargement des projets
+══════════════════════════════════════════════ */
+window._projectsReady.then(function(){
+var isMobile = window.innerWidth <= 768;
+
+if(isMobile) {
+    /* ── Désactive le loader Three.js (pas de scène 3D) ── */
+    document.getElementById('loader').classList.add('hidden');
+
+    /* ── Désactive le son ambiant sur mobile ── */
+    var _bgAudio = document.getElementById('bg-static-audio');
+    if(_bgAudio) { _bgAudio.pause(); _bgAudio.volume = 0; }
+
+    /* ── Burger / Drawer ── */
+    var burgerBtn   = document.getElementById('burger-btn');
+    var drawerEl    = document.getElementById('mobile-drawer');
+    var drawerOverlay = document.getElementById('drawer-overlay');
+    var mobNavVideo = document.getElementById('mob-nav-video');
+    var mobNavPhoto = document.getElementById('mob-nav-photo');
+    var mobNavInfo  = document.getElementById('mob-nav-info');
+
+    function toggleDrawer() { document.body.classList.toggle('menu-open'); }
+    function closeDrawer()  { document.body.classList.remove('menu-open'); }
+    burgerBtn.addEventListener('click', toggleDrawer);
+    drawerOverlay.addEventListener('click', closeDrawer);
+
+    /* ── Navigation mobile ── */
+    var mobSections = {
+        video: document.getElementById('mobile-video-section'),
+        photo: document.getElementById('page-photo'),
+        info:  document.getElementById('page-info')
+    };
+    var mobNavBtns = { video: mobNavVideo, photo: mobNavPhoto, info: mobNavInfo };
+
+    function switchMobilePage(page) {
+        Object.values(mobSections).forEach(function(s){ if(s) s.classList.remove('mob-active'); });
+        Object.values(mobNavBtns).forEach(function(b){ if(b) b.classList.remove('active'); });
+        if(mobSections[page]) mobSections[page].classList.add('mob-active');
+        if(mobNavBtns[page])  mobNavBtns[page].classList.add('active');
+        closeDrawer();
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        if(page === 'info' && window.startInfoCube)  window.startInfoCube();
+        if(page !== 'info' && window.stopInfoCube)   window.stopInfoCube();
+    }
+    mobNavVideo.addEventListener('click', function(){ switchMobilePage('video'); });
+    mobNavPhoto.addEventListener('click', function(){ switchMobilePage('photo'); });
+    mobNavInfo.addEventListener('click',  function(){ switchMobilePage('info'); });
+
+    /* ── Section vidéo : liste des projets depuis PROJECTS ── */
+    var mobileVideoList = document.getElementById('mobile-video-list');
+    PROJECTS.forEach(function(proj, idx) {
+        if(proj.title === 'COMMING SOON') return;
+        var card = document.createElement('div');
+        card.className = 'mobile-proj-card';
+
+        var v = document.createElement('video');
+        v.src = proj.videoSrc; v.muted = true; v.loop = true; v.playsInline = true;
+        v.autoplay = false;
+        card.appendChild(v);
+
+        var titleEl = document.createElement('div');
+        titleEl.className = 'mobile-proj-card-title';
+        titleEl.textContent = proj.title;
+        card.appendChild(titleEl);
+
+        var cta = document.createElement('div');
+        cta.className = 'mobile-proj-card-cta';
+        cta.textContent = 'DÉCOUVRIR';
+        card.appendChild(cta);
+
+        card.addEventListener('click', function(){ window.openProject(idx); });
+
+        /* Auto-play quand visible (IntersectionObserver) */
+        var obs = new IntersectionObserver(function(entries){
+            entries.forEach(function(e){ e.isIntersecting ? v.play().catch(function(){}) : v.pause(); });
+        }, { threshold: 0.4 });
+        obs.observe(card);
+
+        mobileVideoList.appendChild(card);
+    });
+
+    /* ── Section photo : galerie depuis API ── */
+    var gridEl = document.getElementById('mobile-photo-grid');
+    function buildMobilePhotoGrid(photos) {
+        gridEl.innerHTML = '';
+        photos.forEach(function(photo){
+            var wrap = document.createElement('div');
+            wrap.className = 'mobile-photo-wrap';
+            var img = document.createElement('img');
+            img.src = photo.url || photo.src; img.className = 'mobile-photo-item'; img.loading = 'lazy';
+            wrap.appendChild(img);
+            if(photo.name) {
+                var info = document.createElement('div');
+                info.className = 'mobile-photo-info';
+                info.innerHTML =
+                    '<div class="mobile-photo-info-name">' + photo.name + '</div>' +
+                    '<div class="mobile-photo-info-meta">' + (photo.date||'') + (photo.tools ? ' &nbsp;·&nbsp; ' + photo.tools : '') + '</div>';
+                wrap.appendChild(info);
+                wrap.addEventListener('click', function(){
+                    var isActive = wrap.classList.contains('info-active');
+                    gridEl.querySelectorAll('.mobile-photo-wrap.info-active').forEach(function(w){ w.classList.remove('info-active'); });
+                    if(!isActive) wrap.classList.add('info-active');
+                });
+            }
+            gridEl.appendChild(wrap);
+        });
+    }
+    fetch('https://portfolio-api.francois-teule.workers.dev/media')
+        .then(function(r){ return r.json(); })
+        .then(function(data){ if(Array.isArray(data) && data.length) buildMobilePhotoGrid(data); })
+        .catch(function(){});
+
+    /* Ferme l'info au scroll */
+    var photoSection = document.getElementById('page-photo');
+    if(photoSection) {
+        photoSection.addEventListener('scroll', function(){
+            gridEl.querySelectorAll('.mobile-photo-wrap.info-active').forEach(function(w){
+                w.classList.remove('info-active');
+            });
+        }, { passive: true });
+    }
+
+    /* ── Page de départ ── */
+    switchMobilePage('video');
+}
+
+/* ══════════════════════════════════════════════
+   PANNEAU PROJET — contrôleur unique (desktop + mobile)
+   ══════════════════════════════════════════════ */
+(function(){
+    var panel    = document.getElementById('project-panel');
+    var inner    = document.getElementById('project-inner');
+    var vid      = document.getElementById('project-video-player');
+    var titleEl  = document.getElementById('project-title-display');
+    var moreGrid = document.getElementById('project-more-grid');
+    var playBtn  = document.getElementById('proj-play-btn');
+    var soundBtn = document.getElementById('proj-sound-btn');
+    var fsBtn    = document.getElementById('proj-fs-btn');
+    var closeBtn = document.getElementById('project-close-btn');
+
+    var soundOn = false;
+    vid.muted = true;
+
+    function syncPlayBtn() {
+        playBtn.textContent = vid.paused ? 'PLAY' : 'PAUSE';
+        playBtn.classList.toggle('active', !vid.paused);
+    }
+    function syncSoundBtn() {
+        soundBtn.textContent = soundOn ? 'COUPER LE SON' : 'SON';
+        soundBtn.classList.toggle('active', soundOn);
+    }
+
+    vid.addEventListener('play', syncPlayBtn);
+    vid.addEventListener('pause', function(){ syncPlayBtn(); if(soundOn && window.resumeAmbient) window.resumeAmbient(); });
+
+    playBtn.addEventListener('click', function(){
+        if(vid.paused){ vid.play().catch(function(){}); if(soundOn && window.pauseAmbient) window.pauseAmbient(); }
+        else { vid.pause(); }
+    });
+    soundBtn.addEventListener('click', function(){
+        soundOn = !soundOn; vid.muted = !soundOn; syncSoundBtn();
+        if(soundOn && !vid.paused){ if(window.pauseAmbient) window.pauseAmbient(); }
+        else { if(window.resumeAmbient) window.resumeAmbient(); }
+    });
+    fsBtn.addEventListener('click', function(){
+        if(document.fullscreenElement){ document.exitFullscreen(); }
+        else if(panel.requestFullscreen){ panel.requestFullscreen(); }
+        else if(panel.webkitRequestFullscreen){ panel.webkitRequestFullscreen(); }
+    });
+    closeBtn.addEventListener('click', function(){ window.closeProject(); });
+
+    window.openProject = function(idx) {
+        var proj = PROJECTS[idx];
+        if(!proj) return;
+        if(typeof isProjectOpen !== 'undefined') isProjectOpen = true;
+        document.body.classList.add('project-open');
+        titleEl.textContent = proj.title;
+        vid.src = proj.videoSrc; vid.muted = true; soundOn = false;
+        syncPlayBtn(); syncSoundBtn();
+        moreGrid.innerHTML = '';
+        proj.more.forEach(function(item){
+            if(item.type === 'img'){
+                var img = document.createElement('img');
+                img.src = item.src; img.className = 'proj-more-item'; img.loading = 'lazy';
+                moreGrid.appendChild(img);
+            } else if(item.type === 'video'){
+                var v = document.createElement('video');
+                v.src = item.src; v.className = 'proj-more-item';
+                v.autoplay = true; v.loop = true; v.muted = true; v.playsInline = true;
+                moreGrid.appendChild(v);
+            }
+        });
+        inner.scrollTop = 0;
+        panel.classList.add('open');
+        vid.play().catch(function(){});
+    };
+
+    window.closeProject = function() {
+        if(typeof isProjectOpen !== 'undefined') isProjectOpen = false;
+        document.body.classList.remove('project-open');
+        vid.pause(); vid.src = '';
+        if(soundOn){ soundOn = false; vid.muted = true; syncSoundBtn(); }
+        if(window.resumeAmbient) window.resumeAmbient();
+        panel.classList.remove('open');
+        if(typeof isMobile !== 'undefined' && isMobile) return;
+        setTimeout(function(){
+            if(typeof isTouching !== 'undefined' && !isTouching && typeof hasInteracted !== 'undefined' && hasInteracted){
+                var isCS = projectNames[currentActiveIndex] === 'COMMING SOON';
+                btnProject.style.display = isCS ? 'none' : 'block';
+                if(!isCS) btnProject.classList.add('visible');
+                projectPreview.classList.add('visible');
+            }
+        }, 800);
+    };
+
+    /* Desktop seulement */
+    var btnProj = document.getElementById('btn-project');
+    if(btnProj) btnProj.addEventListener('click', function(){
+        btnProj.classList.remove('visible');
+        document.getElementById('project-preview').classList.remove('visible');
+        window.openProject(window.currentActiveIndex || 0);
+    });
+})();
+}); // fin _projectsReady.then
+</script>
+
+<script type="module" src="/src/three-scene.js"></script>
+</body>
+</html>
