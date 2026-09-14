@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frantz — Directeur artistique &amp; designer</title>
+<meta name="description" content="Portfolio de François Teulé (Frantz), directeur artistique et designer basé à Paris. Design graphique, motion 2D/3D, production audiovisuelle.">
+<meta name="theme-color" content="#050505">
+<meta property="og:title" content="Frantz — Directeur artistique & designer">
+<meta property="og:description" content="Design graphique, motion 2D/3D, production audiovisuelle. Paris.">
+<meta property="og:type" content="website">
+<style>
+/* ══════════════════════════════════════════════════════════
+   FRANTZ — index4
+   Mur de projets en 3D (CSS transforms, sans librairie),
+   défilement infini, accès direct au projet.
+   Vue LISTE conservée en repli accessible.
+══════════════════════════════════════════════════════════ */
+
+:root{
+  --bg:#050505;
+  --fg:#ffffff;
+  --dim:rgba(255,255,255,.45);
+  --faint:rgba(255,255,255,.18);
+  --line:rgba(255,255,255,.12);
+  --ui:'Helvetica Neue',Helvetica,Arial,sans-serif;
+  --gut:clamp(16px,3.4vw,42px);
+  --head:58px;
+  --foot:82px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--fg);
+  font-family:var(--ui);font-weight:500;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+body.scrollable{overflow:auto}
+
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+img,video{display:block;max-width:100%}
+:focus-visible{outline:1px solid var(--fg);outline-offset:3px}
+
+.label{font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+.skip{position:absolute;left:-9999px;top:0;padding:10px 16px;background:#fff;color:#000;z-index:999}
+.skip:focus{left:8px;top:8px}
+
+/* ── EN-TÊTE ─────────────────────────────────────────── */
+header.site{
+  position:fixed;top:0;left:0;right:0;height:var(--head);z-index:60;
+  display:flex;align-items:center;justify-content:space-between;gap:20px;
+  padding:0 var(--gut);
+  /* la barre est transparente : elle ne doit pas voler les clics
+     aux vignettes situées sous elle */
+  pointer-events:none;
+}
+header.site>*{pointer-events:auto}
+.brand{display:flex;align-items:baseline;gap:14px;min-width:0}
+.brand .name{font-size:.82rem;letter-spacing:.34em;text-transform:uppercase;white-space:nowrap}
+.brand .role{font-size:.58rem;letter-spacing:.12em;color:var(--dim);white-space:nowrap}
+@media (max-width:620px){.brand .role{display:none}}
+header.site nav{display:flex;gap:clamp(12px,2.4vw,26px);align-items:center}
+header.site nav button,header.site nav a{
+  font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);
+  transition:color .18s;padding:6px 0;border-bottom:1px solid transparent;
+}
+header.site nav button:hover,header.site nav a:hover,
+header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:var(--fg)}
+.hide-s{display:none}
+@media (min-width:760px){.hide-s{display:inline-block}}
+
+/* ── SCÈNE ───────────────────────────────────────────── */
+#stage{position:fixed;inset:0;z-index:1}
+
+#wall{
+  position:absolute;inset:0;
+  perspective:1250px;perspective-origin:50% 48%;
+  overflow:hidden;cursor:grab;touch-action:none;
+}
+#wall.drag{cursor:grabbing}
+/* Les tuiles sont reculées en Z, donc placées derrière le plan de leur
+   propre conteneur : sans ceci, #plane intercepte la souris partout sauf
+   au centre exact, et le survol ne répond nulle part ailleurs. */
+#plane{position:absolute;inset:0;transform-style:preserve-3d;pointer-events:none}
+/* Vignettage et voiles haut/bas : le centre reste lisible, les bords
+   s'éteignent, et la légende ne se pose jamais sur une vignette. */
+#wall::before,#wall::after{content:'';position:absolute;left:0;right:0;pointer-events:none;z-index:900}
+#wall::before{top:0;height:150px;background:linear-gradient(to bottom,rgba(5,5,5,.92),rgba(5,5,5,0))}
+#wall::after{bottom:0;height:190px;background:linear-gradient(to top,rgba(5,5,5,.94),rgba(5,5,5,0))}
+#vignette{position:absolute;inset:0;pointer-events:none;z-index:890;
+  background:radial-gradient(ellipse 78% 72% at 50% 46%,rgba(5,5,5,0) 38%,rgba(5,5,5,.55) 78%,rgba(5,5,5,.9) 100%)}
+
+.tile{
+  position:absolute;top:0;left:0;
+  transform-origin:50% 50%;
+  background:none;border:none;padding:0;overflow:visible;
+  text-align:left;
+  pointer-events:auto;
+}
+.tframe{
+  display:block;width:100%;height:100%;position:relative;overflow:hidden;
+  background:#0c0c0c;border:1px solid rgba(255,255,255,.08);
+  transition:border-color .2s ease,box-shadow .2s ease;
+}
+.tframe img{width:100%;height:100%;object-fit:cover;opacity:.9;transition:opacity .2s ease}
+.tframe .ph{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  padding:10px;text-align:center;
+  font-size:.52rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.22);
+}
+/* Nom affiché sous la vignette, au survol seulement */
+.tlabel{
+  position:absolute;top:100%;left:-20%;right:-20%;margin-top:9px;
+  text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;
+  color:rgba(255,255,255,.92);text-shadow:0 1px 10px rgba(0,0,0,.9);
+  opacity:0;transform:translateY(-3px);
+  transition:opacity .18s ease,transform .18s ease;pointer-events:none;
+}
+.tlabel em{font-style:normal;color:rgba(255,255,255,.5)}
+@media (hover:hover){
+  .tile:hover .tframe{border-color:rgba(255,255,255,.85);box-shadow:0 0 0 1px rgba(255,255,255,.3)}
+  .tile:hover .tframe img{opacity:1}
+}
+.tile:hover .tlabel,.tile:focus-visible .tlabel{opacity:1;transform:translateY(0)}
+.tile:focus-visible .tframe{border-color:rgba(255,255,255,.85)}
+.tile.soon .tframe{filter:grayscale(1)}
+@media (hover:none){ .tlabel{opacity:1;transform:none} }
+
+/* ── PIED : légende, filtres, compteur ───────────────── */
+#foot{
+  position:fixed;left:0;right:0;bottom:0;z-index:60;
+  height:var(--foot);padding:0 var(--gut);
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:16px;
+  padding-bottom:18px;pointer-events:none;
+}
+#foot>*{pointer-events:auto}
+#hint{font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.3)}
+#count{font-size:.55rem;letter-spacing:.18em;text-align:right;color:rgba(255,255,255,.3);font-variant-numeric:tabular-nums}
+#center{display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0}
+.filters{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
+.chip{
+  font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;
+  padding:6px 12px;border-radius:999px;color:rgba(255,255,255,.42);transition:.18s;
+}
+.chip:hover{color:var(--fg)}
+.chip[aria-pressed="true"]{color:#050505;background:var(--fg)}
+.chip .n{opacity:.5;margin-left:5px}
+@media (max-width:720px){
+  #hint,#count{display:none}
+  #foot{grid-template-columns:1fr}
+  #center{align-items:center}
+}
+
+/* ── VUE LISTE ───────────────────────────────────────── */
+#listwrap{
+  position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;
+  padding:calc(var(--head) + 26px) var(--gut) calc(var(--foot) + 40px);
+}
+#listwrap.off{opacity:0}
+.lintro{padding:clamp(10px,4vh,44px) 0 clamp(26px,5vh,50px);border-bottom:1px solid var(--line)}
+.lintro h1{font-size:clamp(1.6rem,5vw,3.4rem);line-height:1.04;letter-spacing:-.02em;
+  text-transform:uppercase;font-weight:600;max-width:16ch}
+.lintro p{margin-top:18px;max-width:46ch;font-size:.92rem;line-height:1.6;color:var(--dim);font-weight:400}
+.row{
+  width:100%;display:grid;align-items:center;
+  grid-template-columns:44px 1fr auto auto 24px;gap:16px;
+  padding:18px 0;border-bottom:1px solid var(--line);
+  text-align:left;transition:padding-left .28s ease;
+}
+@media (hover:hover){.row:hover{padding-left:14px}}
+.row .num{font-size:.56rem;letter-spacing:.14em;color:var(--faint)}
+.row .ttl{font-size:clamp(.98rem,2.4vw,1.5rem);line-height:1.15;text-transform:uppercase;letter-spacing:-.01em}
+.row .cat,.row .yr{font-size:.56rem;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.row .arw{font-size:.85rem;color:var(--faint);transition:transform .28s ease,color .2s}
+@media (hover:hover){.row:hover .arw{transform:translateX(5px);color:var(--fg)}}
+.row .bts{font-size:.52rem;letter-spacing:.16em;color:var(--faint);text-transform:uppercase}
+.row.soon{opacity:.3;cursor:default}
+@media (max-width:720px){
+  .row{grid-template-columns:32px 1fr auto;gap:12px}
+  .row .yr,.row .arw{display:none}
+}
+
+/* ── APERÇU QUI SUIT LA SOURIS (vue liste) ───────────── */
+#peek{
+  position:fixed;z-index:55;width:290px;aspect-ratio:16/10;
+  pointer-events:none;overflow:hidden;
+  background:#0c0c0c;border:1px solid var(--line);
+  opacity:0;transform:translate(-50%,-50%) scale(.96);
+  transition:opacity .22s ease,transform .22s ease;
+}
+#peek.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#peek img,#peek video{width:100%;height:100%;object-fit:cover}
+@media (hover:none),(max-width:900px){#peek{display:none}}
+@media (prefers-reduced-motion:reduce){#peek{transition:none}}
+
+/* ── FONDUS ENTRE LES VUES ───────────────────────────── */
+#wall,#listwrap{transition:opacity .3s ease,visibility 0s linear 0s}
+#wall.off,#listwrap.off{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .3s ease,visibility 0s linear .3s}
+
+/* ── PANNEAUX (projet / infos) ───────────────────────── */
+.panel{
+  position:fixed;inset:0;z-index:90;background:var(--bg);
+  overflow-y:auto;overscroll-behavior:contain;
+  opacity:0;visibility:hidden;transform:translateY(8px);
+  transition:opacity .32s ease,transform .32s ease,visibility 0s linear .32s;
+}
+.panel.open{opacity:1;visibility:visible;transform:none;
+  transition:opacity .32s ease,transform .32s ease,visibility 0s linear 0s}
+.panel[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){
+  .panel,#wall,#listwrap{transition:none}
+  .panel{transform:none}
+}
+.phead{
+  position:sticky;top:0;z-index:5;height:var(--head);
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:0 var(--gut);
+  background:rgba(5,5,5,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);
+}
+.phead .back{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);transition:color .18s}
+.phead .back:hover{color:var(--fg)}
+.phead .now{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw}
+.pbody{padding:clamp(26px,5vh,54px) var(--gut) 110px;max-width:1500px;margin:0 auto}
+.pbody h2{font-size:clamp(1.5rem,4.6vw,3rem);line-height:1.05;letter-spacing:-.02em;
+  text-transform:uppercase;font-weight:600;max-width:18ch}
+.pmeta{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px 22px}
+.stage-media{
+  margin-top:clamp(22px,4vh,38px);background:#0c0c0c;border:1px solid var(--line);
+  min-height:min(50vh,400px);display:flex;align-items:center;justify-content:center;
+}
+.stage-media video{width:100%;max-height:78vh;object-fit:contain;background:#000}
+.stage-media img{width:100%;max-height:80vh;object-fit:contain;background:#000}
+
+/* Description et crédits */
+.pcols{
+  margin-top:clamp(40px,6vh,72px);
+  display:grid;gap:clamp(28px,4vw,64px);grid-template-columns:1fr;
+  align-items:start;
+}
+@media (min-width:900px){.pcols{grid-template-columns:1.35fr 1fr}}
+.pcols h3{font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:18px}
+.ptext{
+  font-size:clamp(.92rem,1.7vw,1.08rem);line-height:1.65;font-weight:400;
+  max-width:58ch;color:rgba(255,255,255,.88);white-space:pre-line;
+}
+.credits{display:grid;grid-template-columns:auto 1fr;gap:9px 22px;align-items:baseline;margin:0}
+.credits dt{
+  font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);
+  margin:0;white-space:nowrap;
+}
+.credits dd{margin:0;font-size:.82rem;letter-spacing:.03em;color:rgba(255,255,255,.92)}
+@media (max-width:520px){
+  .credits{grid-template-columns:1fr;gap:2px 0}
+  .credits dd{margin-bottom:12px}
+}
+
+.more{margin-top:clamp(44px,7vh,80px)}
+.more h3{font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.more .sub{font-size:.55rem;letter-spacing:.14em;color:var(--faint);text-transform:uppercase;margin-bottom:20px}
+.mgrid{display:grid;gap:clamp(8px,1.2vw,14px);grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.mcell{position:relative;aspect-ratio:16/10;background:#0c0c0c;border:1px solid var(--line);overflow:hidden;padding:0}
+.mcell img,.mcell video{width:100%;height:100%;object-fit:cover}
+.mcell .tag{
+  position:absolute;left:8px;bottom:7px;font-size:.48rem;letter-spacing:.16em;
+  text-transform:uppercase;color:rgba(255,255,255,.7);text-shadow:0 1px 6px rgba(0,0,0,.8);
+}
+@media (hover:hover){.mcell::after{content:'';position:absolute;inset:0;background:rgba(5,5,5,.2);transition:opacity .25s}
+  .mcell:hover::after{opacity:0}}
+
+.nextrow{margin-top:clamp(44px,7vh,80px);padding-top:24px;border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;align-items:center;gap:16px}
+.nextrow b{font-size:clamp(.95rem,2.3vw,1.45rem);text-transform:uppercase;font-weight:500;letter-spacing:-.01em}
+
+/* Infos — même composition que la première version */
+.info-body{padding-top:clamp(40px,9vh,90px)}
+.ifoot{margin-top:clamp(50px,9vh,100px);padding-top:24px;border-top:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between}
+.igrid{display:grid;gap:clamp(30px,5vw,70px);grid-template-columns:1fr}
+@media (min-width:900px){.igrid{grid-template-columns:1.1fr 1fr}}
+.igrid h3{font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:20px}
+.bio{font-size:clamp(1rem,2.1vw,1.35rem);line-height:1.45;max-width:34ch;font-weight:400}
+.ilinks{list-style:none;margin-top:26px;display:flex;flex-direction:column;gap:10px}
+.ilinks a{font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;
+  border-bottom:1px solid var(--faint);padding-bottom:3px;display:inline-block;transition:border-color .18s}
+.ilinks a:hover{border-color:var(--fg)}
+.logos{display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:24px 18px;align-items:center}
+.logos img{width:100%;height:28px;object-fit:contain;object-position:left center;
+  filter:brightness(0) invert(1);opacity:.45;transition:opacity .22s}
+.logos img:hover{opacity:1}
+
+/* Loupe plein écran pour les coulisses */
+#zoom{position:fixed;inset:0;z-index:120;background:rgba(4,4,4,.96);
+  display:flex;align-items:center;justify-content:center;padding:clamp(16px,4vw,48px);
+  opacity:0;visibility:hidden;transition:opacity .25s ease,visibility 0s linear .25s}
+#zoom.open{opacity:1;visibility:visible;transition:opacity .25s ease,visibility 0s linear 0s}
+#zoom[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){#zoom{transition:none}}
+#zoom img,#zoom video{max-width:100%;max-height:88vh;object-fit:contain}
+#zoom .close{position:absolute;top:18px;right:var(--gut);font-size:.58rem;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--dim)}
+#zoom .close:hover{color:var(--fg)}
+
+.empty{padding:60px 0;color:var(--dim);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase}
+#boot{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center}
+#boot[hidden]{display:none}
+#boot span{font-size:.58rem;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.3)}
+</style>
+</head>
+<body>
+
+<a class="skip" href="#liste">Aller à la liste des projets</a>
+
+<header class="site">
+  <div class="brand">
+    <button class="name" id="home">Frantz</button>
+    <span class="role">Directeur artistique + designer</span>
+  </div>
+  <nav>
+    <button id="nav-wall" aria-pressed="true">Mur</button>
+    <button id="nav-list" aria-pressed="false">Liste</button>
+    <button id="nav-info">Infos</button>
+    <a class="hide-s" href="mailto:contact.frantz75@gmail.com">Contact</a>
+  </nav>
+</header>
+
+<main id="stage">
+  <section id="wall" aria-label="Mur de projets, faire défiler ou glisser">
+    <div id="plane"></div>
+    <div id="vignette"></div>
+  </section>
+
+  <section id="listwrap" hidden aria-label="Liste des projets">
+    <div class="lintro" id="liste">
+      <h1>Directeur artistique &amp; designer</h1>
+      <p>Design graphique, motion 2D et 3D, production audiovisuelle. Basé à Paris. Sélection de projets réalisés en agence, en studio et en indépendant.</p>
+    </div>
+    <div id="list"></div>
+  </section>
+</main>
+
+<div id="foot">
+  <div id="hint">Molette ou glisser : défiler &nbsp;·&nbsp; Survol : nom du projet</div>
+  <div id="center">
+    <div class="filters" id="filters" role="group" aria-label="Filtrer"></div>
+  </div>
+  <div id="count">↓ 0000</div>
+</div>
+
+<!-- ── PANNEAU PROJET ── -->
+<div class="panel" id="view" hidden role="dialog" aria-modal="true" aria-labelledby="v-title">
+  <div class="phead">
+    <button class="back" id="v-back">← Retour</button>
+    <span class="now" id="v-now"></span>
+  </div>
+  <div class="pbody">
+    <h2 id="v-title"></h2>
+    <div class="pmeta"><span class="label" id="v-cat"></span><span class="label" id="v-year"></span></div>
+    <div class="stage-media" id="v-stage"></div>
+
+    <div class="pcols" id="v-about" hidden>
+      <div class="pdesc" id="v-desc-wrap" hidden>
+        <h3>Le projet</h3>
+        <div class="ptext" id="v-desc"></div>
+      </div>
+      <div class="pcred" id="v-cred-wrap" hidden>
+        <h3>Crédits</h3>
+        <dl class="credits" id="v-credits"></dl>
+      </div>
+    </div>
+
+    <div class="more" id="v-more" hidden>
+      <h3>En coulisses</h3>
+      <div class="sub" id="v-subcount"></div>
+      <div class="mgrid" id="v-mgrid"></div>
+    </div>
+    <div class="nextrow" id="v-nextrow" hidden>
+      <span class="label">Projet suivant</span>
+      <button id="v-next"><b></b></button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PANNEAU INFOS ── -->
+<div class="panel" id="infoview" hidden role="dialog" aria-modal="true" aria-labelledby="i-title">
+  <div class="phead">
+    <button class="back" id="i-back">← Retour</button>
+    <span class="now">Infos</span>
+  </div>
+  <div class="pbody info-body">
+    <div class="igrid">
+      <div>
+        <h3 id="i-title">Infos</h3>
+        <p class="bio">Directeur artistique et designer basé à Paris. Je travaille l’image de la direction artistique au montage final : identité, design graphique, motion 2D et 3D, production audiovisuelle.</p>
+        <ul class="ilinks">
+          <li><a href="mailto:contact.frantz75@gmail.com">contact.frantz75@gmail.com</a></li>
+          <li><a href="https://www.linkedin.com/in/fran%C3%A7ois-teul%C3%A9/" target="_blank" rel="noopener">LinkedIn</a></li>
+          <li><a href="https://www.instagram.com/_fran.tl/" target="_blank" rel="noopener">Instagram</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Clients</h3>
+        <div class="logos" id="logos"></div>
+      </div>
+    </div>
+    <div class="ifoot">
+      <span class="label">Frantz — Paris</span>
+      <span class="label" id="year">2026</span>
+    </div>
+  </div>
+</div>
+
+<div id="peek" aria-hidden="true"></div>
+
+<div id="zoom" hidden><button class="close" id="z-close">Fermer ✕</button><div id="z-slot"></div></div>
+
+<div id="boot"><span>Chargement</span></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ══════════════════════════════════════════════
+   RÉGLAGES
+══════════════════════════════════════════════ */
+var API  = 'https://portfolio-api.francois-teule.workers.dev';
+var ZONE = 'https://assets.frantzimann.org';
+
+/* Passer à true une fois les transformations activées sur la zone
+   Cloudflare. Les vignettes deviennent alors de vraies images
+   générées côté serveur, sans aucun téléchargement de vidéo. */
+var CF_MEDIA = false;   /* vidéos  : /cdn-cgi/media/  */
+var CF_IMAGE = false;   /* images  : /cdn-cgi/image/  */
+
+function onZone(u){ return u && u.indexOf(ZONE) === 0; }
+function vidUrl(src, w){
+  if(!CF_MEDIA || !onZone(src)) return src;
+  return ZONE + '/cdn-cgi/media/width=' + w + ',fit=scale-down/' + src;
+}
+function imgUrl(src, w){
+  if(!CF_IMAGE || !onZone(src)) return src;
+  return ZONE + '/cdn-cgi/image/width=' + w + ',fit=scale-down,format=auto/' + src;
+}
+function isVid(u){ return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u || ''); }
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+  });
+}
+
+/* ── Fondus d'ouverture et de fermeture des panneaux ──
+   L'attribut hidden coupe toute transition, on l'enlève d'abord,
+   on laisse une image passer, puis on anime l'opacité. */
+var FADE = 320;
+function isOpen(el){ return el.classList.contains('open'); }
+function openPanel(el){
+  if(el._t){ clearTimeout(el._t); el._t = null; }
+  el.hidden = false;
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.classList.add('open'); }); });
+}
+function closePanel(el, after){
+  if(!isOpen(el) && el.hidden){ if(after) after(); return; }
+  el.classList.remove('open');
+  if(el._t) clearTimeout(el._t);
+  el._t = setTimeout(function(){
+    el.hidden = true; el._t = null;
+    if(after) after();
+  }, reduced ? 0 : FADE);
+}
+function yearOf(s){ var m = String(s || '').match(/(19|20)\d{2}/); return m ? m[0] : ''; }
+function mod(n, m){ return ((n % m) + m) % m; }
+
+var reduced = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+/* ══════════════════════════════════════════════
+   VIGNETTES : une seule petite image par projet,
+   fabriquée une fois puis réutilisée par toutes les
+   tuiles. C'est ce qui garde le mur fluide quel que
+   soit le nombre de projets affichés en même temps.
+══════════════════════════════════════════════ */
+var THUMB = {};           /* src -> dataURL | url | null */
+var WAIT  = {};           /* src -> [callbacks]          */
+var QUEUE = [], BUSY = 0, MAXBUSY = 2, TW = 440;
+
+function thumb(src, kind, cb){
+  if(!src) return cb(null);
+  if(THUMB[src] !== undefined) return cb(THUMB[src]);
+  if(kind === 'video' && CF_MEDIA && onZone(src)){
+    THUMB[src] = ZONE + '/cdn-cgi/media/mode=frame,time=1s,width=' + TW + '/' + src;
+    return cb(THUMB[src]);
+  }
+  if(kind === 'photo' && CF_IMAGE && onZone(src)){
+    THUMB[src] = imgUrl(src, TW);
+    return cb(THUMB[src]);
+  }
+  if(WAIT[src]){ WAIT[src].push(cb); return; }
+  WAIT[src] = [cb];
+  QUEUE.push([src, kind]);
+  pump();
+}
+
+function settle(src, url){
+  THUMB[src] = url || null;
+  (WAIT[src] || []).forEach(function(f){ f(THUMB[src]); });
+  delete WAIT[src];
+  BUSY--; pump();
+}
+
+function shrink(el, w, h){
+  var c = document.createElement('canvas');
+  c.width = TW;
+  c.height = Math.max(1, Math.round(TW * (h / w))) || 280;
+  c.getContext('2d').drawImage(el, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', .74);
+}
+
+function pump(){
+  while(BUSY < MAXBUSY && QUEUE.length){
+    BUSY++;
+    (function(job){
+      var src = job[0], kind = job[1], killed = false;
+      var to = setTimeout(function(){ if(!killed){ killed = true; settle(src, null); } }, 14000);
+
+      if(kind === 'photo'){
+        var im = new Image();
+        im.crossOrigin = 'anonymous';
+        im.onload = function(){
+          if(killed) return; killed = true; clearTimeout(to);
+          var url;
+          /* Si le canevas est « teinté » (pas d'en-tête CORS sur le fichier),
+             on retombe sur l'image d'origine plutôt que sur rien. */
+          try{ url = shrink(im, im.naturalWidth, im.naturalHeight); }
+          catch(e){ url = src; }
+          settle(src, url);
+        };
+        im.onerror = function(){
+          if(killed) return; killed = true; clearTimeout(to); settle(src, src);
+        };
+        im.src = src;
+        return;
+      }
+
+      var v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.preload = 'metadata';
+      v.crossOrigin = 'anonymous';
+      v.addEventListener('loadeddata', function(){
+        if(killed) return; killed = true; clearTimeout(to);
+        var url = null;
+        try{ url = shrink(v, v.videoWidth || 16, v.videoHeight || 10); }catch(e){ url = null; }
+        v.removeAttribute('src');
+        try{ v.load(); }catch(e){}
+        settle(src, url);
+      }, { once:true });
+      v.addEventListener('error', function(){
+        if(killed) return; killed = true; clearTimeout(to); settle(src, null);
+      }, { once:true });
+      v.src = vidUrl(src, 640) + '#t=0.8';
+      v.load();
+    })(QUEUE.shift());
+  }
+}
+
+/* ══════════════════════════════════════════════
+   DONNÉES
+══════════════════════════════════════════════ */
+var ALL = [], ITEMS = [], FILTER = 'TOUT', MODE = 'wall';
+var lastFocus = null;
+
+var wallEl = document.getElementById('wall');
+var plane  = document.getElementById('plane');
+var listEl = document.getElementById('list');
+var listWrap = document.getElementById('listwrap');
+var cntEl  = document.getElementById('count');
+var filtEl = document.getElementById('filters');
+
+var yEl = document.getElementById('year');
+if(yEl) yEl.textContent = new Date().getFullYear();
+
+function boot(){
+  Promise.all([
+    fetch(API + '/projects').then(function(r){ return r.json(); }).catch(function(){ return []; }),
+    fetch(API + '/media').then(function(r){ return r.json(); }).catch(function(){ return []; }),
+    fetch(API + '/clients').then(function(r){ return r.json(); }).catch(function(){ return []; })
+  ]).then(function(res){
+    var projects = Array.isArray(res[0]) ? res[0] : [];
+    var media    = Array.isArray(res[1]) ? res[1] : [];
+    var clients  = Array.isArray(res[2]) ? res[2] : [];
+
+    projects.forEach(function(p){
+      var more = p.more;
+      if(!Array.isArray(more)){
+        try{ more = JSON.parse(p.more_urls || '[]'); }catch(e){ more = []; }
+      }
+      more = (more || []).filter(function(m){ return m && m.src; }).map(function(m){
+        return { type: (m.type === 'video' || isVid(m.src)) ? 'video' : 'img', src: m.src };
+      });
+      var creds = p.credits;
+      if(!Array.isArray(creds)){
+        try{ creds = JSON.parse(p.credits || '[]'); }catch(e){ creds = []; }
+      }
+      creds = (creds || []).filter(function(c){ return c && (c.role || c.name); });
+
+      ALL.push({
+        key:'projet-' + p.id, kind:'video', cat:'Vidéo',
+        title: p.title || 'Sans titre',
+        year: yearOf(p.created_at),
+        src: p.video_url || '',
+        thumb: p.thumb_url || '',        /* miniature choisie dans le back-office */
+        desc: p.description || '',
+        credits: creds,
+        more: more,
+        soon: p.status === 'coming_soon' || !p.video_url
+      });
+    });
+
+    media.forEach(function(m){
+      ALL.push({
+        key:'photo-' + m.id, kind:'photo', cat:'Photo',
+        title: m.name || 'Sans titre',
+        year: yearOf(m.date) || (m.date || ''),
+        date: m.date || '', tools: m.tools || '',
+        src: m.url || '', thumb: '', desc: '', credits: [],
+        more: [], soon: false
+      });
+    });
+
+    buildFilters();
+    buildLogos(clients);
+    apply();
+    document.getElementById('boot').hidden = true;
+    route();
+    loop();
+  });
+}
+
+/* ══════════════════════════════════════════════
+   FILTRES
+══════════════════════════════════════════════ */
+function buildFilters(){
+  var c = { 'TOUT': ALL.length, 'Vidéo': 0, 'Photo': 0 };
+  ALL.forEach(function(i){ c[i.cat] = (c[i.cat] || 0) + 1; });
+  filtEl.innerHTML = ['TOUT','Vidéo','Photo'].map(function(k){
+    return '<button class="chip" data-f="' + esc(k) + '" aria-pressed="' + (k === FILTER) + '">' +
+           esc(k === 'TOUT' ? 'Tout' : k) + '<span class="n">' + (c[k] || 0) + '</span></button>';
+  }).join('');
+  filtEl.querySelectorAll('.chip').forEach(function(b){
+    b.addEventListener('click', function(){
+      FILTER = b.dataset.f;
+      filtEl.querySelectorAll('.chip').forEach(function(x){
+        x.setAttribute('aria-pressed', String(x.dataset.f === FILTER));
+      });
+      apply();
+    });
+  });
+}
+
+function apply(){
+  ITEMS = ALL.filter(function(i){ return FILTER === 'TOUT' || i.cat === FILTER; });
+  STRIDE = pickStride(ITEMS.length);
+  renderList();
+  resetWall();
+}
+
+/* ══════════════════════════════════════════════
+   MUR 3D — grille infinie, nœuds recyclés
+══════════════════════════════════════════════ */
+var CW = 300, CH = 200, GAPX = 34, GAPY = 30;
+var tx = 0, ty = 0, sx = 0, sy = 0;     /* cible et position lissée */
+var tiles = {}, freeNodes = [], scrollAcc = 0;
+
+function sizes(){
+  /* En vue liste le mur est masqué : clientWidth vaut 0. On retombe alors
+     sur la largeur de fenêtre, et on garde un plancher, sinon le pas de
+     grille vaut zéro et la boucle de placement ne se termine jamais. */
+  var vw = wallEl.clientWidth || window.innerWidth || 1024;
+  CW = vw < 700 ? Math.round(vw / 2.2) : Math.max(210, Math.min(330, vw / 5.1));
+  CW = Math.max(120, CW);
+  CH = Math.max(80, Math.round(CW * 0.635));
+  GAPX = Math.max(10, Math.round(CW * 0.20));
+  GAPY = Math.max(10, Math.round(CH * 0.28));
+}
+
+/* Décalage d'une rangée à l'autre : premier entier ≥ 3 premier avec le
+   nombre de projets, pour que descendre change toujours de projet et que
+   la boucle parcoure bien toute la sélection. */
+var STRIDE = 3;
+function gcd(a, b){ while(b){ var t = a % b; a = b; b = t; } return a; }
+function pickStride(n){
+  if(n < 4) return 1;
+  for(var s = 3; s < n + 4; s++){ if(gcd(s, n) === 1) return s; }
+  return 1;
+}
+
+function itemAt(i, j){
+  if(!ITEMS.length) return null;
+  return ITEMS[mod(i + j * STRIDE, ITEMS.length)];
+}
+
+function take(){
+  var n = freeNodes.pop();
+  if(n){ n.style.display = ''; return n; }
+  n = document.createElement('button');
+  n.className = 'tile';
+  n.style.width = CW + 'px';
+  n.style.height = CH + 'px';
+  n._frame = document.createElement('span'); n._frame.className = 'tframe';
+  n._lab   = document.createElement('span'); n._lab.className = 'tlabel';
+  n.appendChild(n._frame); n.appendChild(n._lab);
+  n.addEventListener('click', function(e){
+    e.preventDefault();
+    if(dragged) return;
+    var it = n._item;
+    if(it && !it.soon){ lastFocus = n; location.hash = it.key; }
+  });
+  plane.appendChild(n);
+  return n;
+}
+function release(n){ n.style.display = 'none'; freeNodes.push(n); }
+
+function fill(node, it){
+  if(!it){ node._item = null; return; }
+  if(node._item && node._item.key === it.key) return;
+  node._item = it;
+
+  node.className = 'tile' + (it.soon ? ' soon' : '');
+  node.setAttribute('aria-label', it.soon ? 'Projet à venir' : ('Ouvrir ' + it.title));
+
+  var frame = node._frame, lab = node._lab;
+  frame.innerHTML = '<span class="ph">' + esc(it.soon ? 'Bientôt' : it.title) + '</span>';
+  lab.innerHTML = it.soon ? 'Bientôt'
+    : esc(it.title) + (it.year ? ' <em>· ' + esc(it.year) + '</em>' : '');
+
+  if(it.soon || !it.src) return;
+
+  /* Une miniature importée dans le back-office remplace l'arrêt sur image. */
+  thumb(it.thumb || it.src, it.thumb ? 'photo' : it.kind, function(url){
+    if(node._item !== it || !url) return;
+    var im = node._img || (node._img = new Image());
+    im.alt = ''; im.decoding = 'async';
+    if(im.getAttribute('src') !== url) im.src = url;
+    frame.innerHTML = '';
+    frame.appendChild(im);
+  });
+}
+
+function resetWall(){
+  Object.keys(tiles).forEach(function(k){ release(tiles[k]); });
+  tiles = {};
+  sizes();
+  freeNodes.forEach(function(n){ n.style.width = CW + 'px'; n.style.height = CH + 'px'; n._item = null; });
+  if(MODE === 'wall') layout(true);
+}
+
+function layout(force){
+  if(MODE !== 'wall' || !ITEMS.length){ return; }
+  var vw = wallEl.clientWidth, vh = wallEl.clientHeight;
+  var stepX = CW + GAPX, stepY = CH + GAPY;
+  if(vw < 2 || vh < 2 || stepX < 2 || stepY < 2) return;
+  var cx = vw / 2, cy = vh * 0.46;
+  var mx = stepX * 0.58, my = stepY * 0.58;
+
+  var i0 = Math.floor((sx - cx - mx) / stepX), i1 = Math.ceil((sx + cx + mx) / stepX);
+  var j0 = Math.floor((sy - cy - my) / stepY), j1 = Math.ceil((sy + (vh - cy) + my) / stepY);
+
+  /* Filet de sécurité : jamais plus de 160 tuiles à l'écran. */
+  if((i1 - i0 + 1) * (j1 - j0 + 1) > 160){ i1 = i0 + 15; j1 = j0 + 9; }
+
+  var seen = {};
+
+  for(var j = j0; j <= j1; j++){
+    for(var i = i0; i <= i1; i++){
+      var key = i + ':' + j;
+      seen[key] = 1;
+      var node = tiles[key];
+      if(!node){ node = take(); tiles[key] = node; fill(node, itemAt(i, j)); }
+
+      var x = i * stepX - sx + cx;
+      var y = j * stepY - sy + cy;
+      var dx = (x - cx) / (cx || 1);
+      var dy = (y - cy) / (vh * 0.5 || 1);
+
+      var rotY = -dx * 13;
+      var rotX = dy * 6;
+      var tz   = -(dx * dx * 190 + dy * dy * 130);
+      var op   = 1 - Math.min(.72, (dx * dx * .42 + dy * dy * .40));
+
+      /* On n'écrit dans le style que si la valeur a réellement changé :
+         c'est ce qui évite un recalcul complet à chaque image. */
+      var tr = 'translate3d(' + Math.round(x - CW / 2) + 'px,' + Math.round(y - CH / 2) + 'px,' +
+               Math.round(tz) + 'px) rotateY(' + rotY.toFixed(1) + 'deg) rotateX(' + rotX.toFixed(1) + 'deg)';
+      if(node._tr !== tr){ node.style.transform = tr; node._tr = tr; }
+      var o2 = op.toFixed(2);
+      if(node._op !== o2){ node.style.opacity = o2; node._op = o2; }
+      /* Aucun z-index ici : dans un contexte preserve-3d, un z-index
+         explicite impose un ordre différent de l'ordre 3D réel, et la
+         souris finit par toucher une autre tuile que celle qu'on voit. */
+    }
+  }
+
+  for(var k in tiles){
+    if(!seen[k]){ release(tiles[k]); delete tiles[k]; }
+  }
+
+  var cn = '↓ ' + ('000' + Math.abs(Math.round(scrollAcc / 12)) % 10000).slice(-4);
+  if(cntEl._v !== cn){ cntEl.textContent = cn; cntEl._v = cn; }
+}
+
+var raf = null;
+function loop(){
+  raf = requestAnimationFrame(loop);
+  if(MODE !== 'wall') return;
+  var k = reduced ? 1 : 0.12;
+  var ndx = (tx - sx) * k, ndy = (ty - sy) * k;
+  if(Math.abs(ndx) < .05 && Math.abs(ndy) < .05){
+    if(sx === tx && sy === ty) return;
+    sx = tx; sy = ty;
+  } else { sx += ndx; sy += ndy; }
+  layout(false);
+}
+
+/* ── entrées : molette, glisser, clavier ── */
+/* Défilement verrouillé sur l'axe vertical : le mur ne bouge qu'en Y. */
+wallEl.addEventListener('wheel', function(e){
+  e.preventDefault();
+  ty += e.deltaY;
+  scrollAcc += Math.abs(e.deltaY);
+}, { passive:false });
+
+/* Pas de setPointerCapture ici : la capture redirige l'événement « click »
+   vers le mur et les tuiles ne le reçoivent jamais. On écoute donc le
+   déplacement et le relâchement au niveau de la fenêtre. */
+var down = false, dragged = false, px = 0, py = 0;
+wallEl.addEventListener('pointerdown', function(e){
+  if(e.button !== undefined && e.button !== 0) return;
+  down = true; dragged = false; px = e.clientX; py = e.clientY;
+  wallEl.classList.add('drag');
+});
+window.addEventListener('pointermove', function(e){
+  if(!down) return;
+  var dx = e.clientX - px, dy = e.clientY - py;
+  if(Math.abs(dx) + Math.abs(dy) > 6) dragged = true;
+  if(dragged){
+    ty -= dy;                 /* horizontal ignoré : axe Y uniquement */
+    scrollAcc += Math.abs(dy);
+  }
+  px = e.clientX; py = e.clientY;
+}, { passive:true });
+function up(){
+  if(!down) return;
+  down = false;
+  wallEl.classList.remove('drag');
+  /* on laisse passer le click qui suit immédiatement un vrai glisser */
+  setTimeout(function(){ dragged = false; }, 60);
+}
+window.addEventListener('pointerup', up);
+window.addEventListener('pointercancel', up);
+
+document.addEventListener('keydown', function(e){
+  if(MODE !== 'wall' || !document.getElementById('view').hidden || !document.getElementById('infoview').hidden) {
+    /* pas de navigation clavier du mur quand un panneau est ouvert */
+  }
+  if(MODE !== 'wall') return;
+  if(!document.getElementById('view').hidden) return;
+  var step = CH + GAPY;
+  if(e.key === 'ArrowDown'){ ty += step; e.preventDefault(); }
+  else if(e.key === 'ArrowUp'){ ty -= step; e.preventDefault(); }
+});
+
+window.addEventListener('resize', function(){ resetWall(); });
+
+/* ══════════════════════════════════════════════
+   VUE LISTE
+══════════════════════════════════════════════ */
+function renderList(){
+  if(!ITEMS.length){ listEl.innerHTML = '<p class="empty">Aucun projet dans cette catégorie.</p>'; return; }
+  listEl.innerHTML = ITEMS.map(function(it, n){
+    var num = ('0' + (n + 1)).slice(-2);
+    var bts = it.more && it.more.length ? (it.more.length + ' en coulisses') : '';
+    if(it.soon){
+      return '<div class="row soon"><span class="num">' + num + '</span><span class="ttl">Bientôt</span>' +
+             '<span class="cat">' + esc(it.cat) + '</span><span class="yr"></span><span class="arw"></span></div>';
+    }
+    return '<button class="row" data-k="' + esc(it.key) + '">' +
+           '<span class="num">' + num + '</span>' +
+           '<span class="ttl">' + esc(it.title) + '</span>' +
+           '<span class="cat">' + esc(it.cat) + (bts ? ' <span class="bts">· ' + esc(bts) + '</span>' : '') + '</span>' +
+           '<span class="yr">' + esc(it.year) + '</span>' +
+           '<span class="arw" aria-hidden="true">→</span></button>';
+  }).join('');
+  listEl.querySelectorAll('.row[data-k]').forEach(function(el){
+    el.addEventListener('click', function(){ lastFocus = el; location.hash = el.dataset.k; });
+    bindPeek(el);
+  });
+}
+
+/* ══════════════════════════════════════════════
+   APERÇU QUI SUIT LA SOURIS (vue liste)
+   Réutilise la vignette déjà en cache : rien à
+   retélécharger. Pour une vidéo, si le survol se
+   prolonge, la vraie boucle prend le relais.
+══════════════════════════════════════════════ */
+var peekEl = document.getElementById('peek');
+var peekT = null, peekT2 = null, peekFor = null;
+var mouseX = 0, mouseY = 0;
+
+function placePeek(){
+  peekEl.style.left = Math.min(Math.max(mouseX + 180, 165), window.innerWidth - 165) + 'px';
+  peekEl.style.top  = Math.min(Math.max(mouseY, 110), window.innerHeight - 110) + 'px';
+}
+
+function hidePeek(){
+  clearTimeout(peekT); clearTimeout(peekT2);
+  peekFor = null;
+  peekEl.classList.remove('on');
+  peekT2 = setTimeout(function(){
+    if(!peekEl.classList.contains('on')) peekEl.innerHTML = '';
+  }, 260);
+}
+
+function bindPeek(row){
+  if(reduced || !window.matchMedia('(hover:hover)').matches) return;
+  var it = ITEMS.filter(function(x){ return x.key === row.dataset.k; })[0];
+  if(!it || !it.src) return;
+
+  row.addEventListener('mouseenter', function(){
+    clearTimeout(peekT); clearTimeout(peekT2);
+    peekFor = it.key;
+    peekT = setTimeout(function(){
+      if(peekFor !== it.key) return;
+      thumb(it.thumb || it.src, it.thumb ? 'photo' : it.kind, function(url){
+        if(peekFor !== it.key) return;
+        peekEl.innerHTML = '';
+        if(url){
+          var im = new Image(); im.alt = ''; im.src = url;
+          peekEl.appendChild(im);
+        }
+        placePeek();              /* posé sous le curseur avant d'apparaître */
+        peekEl.classList.add('on');
+        /* Une vidéo prend vie si on reste dessus, sauf si une miniature
+           a été choisie dans le back-office : c'est elle qui prime. */
+        if(it.kind === 'video' && !it.thumb){
+          peekT2 = setTimeout(function(){
+            if(peekFor !== it.key) return;
+            var v = document.createElement('video');
+            v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
+            v.src = vidUrl(it.src, 640);
+            v.addEventListener('canplay', function(){
+              if(peekFor !== it.key) return;
+              peekEl.innerHTML = ''; peekEl.appendChild(v);
+              v.play().catch(function(){});
+            }, { once:true });
+          }, 420);
+        }
+      });
+    }, 90);
+  });
+
+  row.addEventListener('mouseleave', hidePeek);
+}
+
+document.addEventListener('mousemove', function(e){
+  mouseX = e.clientX; mouseY = e.clientY;
+  if(peekEl.classList.contains('on')) placePeek();
+}, { passive:true });
+
+/* ══════════════════════════════════════════════
+   BASCULE MUR / LISTE
+══════════════════════════════════════════════ */
+var bWall = document.getElementById('nav-wall');
+var bList = document.getElementById('nav-list');
+function setMode(m){
+  MODE = m;
+  bWall.setAttribute('aria-pressed', String(m === 'wall'));
+  bList.setAttribute('aria-pressed', String(m === 'list'));
+  /* fondu : on garde les deux vues dans le flux et on joue sur l'opacité */
+  wallEl.classList.toggle('off', m !== 'wall');
+  listWrap.hidden = false;
+  listWrap.classList.toggle('off', m !== 'list');
+  document.getElementById('hint').style.visibility = (m === 'wall') ? '' : 'hidden';
+  document.getElementById('count').style.visibility = (m === 'wall') ? '' : 'hidden';
+  hidePeek();
+  if(m === 'wall') resetWall();
+}
+bWall.addEventListener('click', function(){ setMode('wall'); });
+bList.addEventListener('click', function(){ setMode('list'); });
+document.getElementById('home').addEventListener('click', function(){ setMode('wall'); });
+if(reduced) setMode('list');
+
+/* ══════════════════════════════════════════════
+   CLIENTS
+══════════════════════════════════════════════ */
+function buildLogos(clients){
+  document.getElementById('logos').innerHTML = clients.map(function(c){
+    return '<img src="' + esc(c.logo_url) + '" alt="' + esc(c.name) + '" loading="lazy" decoding="async">';
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════
+   PANNEAU PROJET
+══════════════════════════════════════════════ */
+var view   = document.getElementById('view');
+var infoV  = document.getElementById('infoview');
+var vTitle = document.getElementById('v-title');
+var vCat   = document.getElementById('v-cat');
+var vYear  = document.getElementById('v-year');
+var vNow   = document.getElementById('v-now');
+var vStage = document.getElementById('v-stage');
+var vMore  = document.getElementById('v-more');
+var vSub   = document.getElementById('v-subcount');
+var vMGrid = document.getElementById('v-mgrid');
+var vNextR = document.getElementById('v-nextrow');
+var vNext  = document.getElementById('v-next');
+var moreObs = null;
+
+function open(it){
+  vTitle.textContent = it.title;
+  vNow.textContent   = it.title;
+  vCat.textContent   = it.cat;
+  vYear.textContent  = it.date || it.year || '';
+
+  vStage.innerHTML = '';
+  if(it.kind === 'photo'){
+    var img = document.createElement('img');
+    img.src = imgUrl(it.src, 1800);
+    img.alt = it.title + (it.tools ? ', ' + it.tools : '');
+    vStage.appendChild(img);
+  } else {
+    var v = document.createElement('video');
+    v.controls = true; v.playsInline = true; v.preload = 'metadata'; v.loop = true;
+    v.setAttribute('controlsList', 'nodownload');
+    v.src = vidUrl(it.src, 1600);
+    vStage.appendChild(v);
+    v.play().catch(function(){});
+  }
+
+  /* ── DESCRIPTION ET CRÉDITS ── */
+  var dWrap = document.getElementById('v-desc-wrap');
+  var cWrap = document.getElementById('v-cred-wrap');
+  var about = document.getElementById('v-about');
+
+  if(it.desc){
+    document.getElementById('v-desc').textContent = it.desc;
+    dWrap.hidden = false;
+  } else { dWrap.hidden = true; }
+
+  var creds = it.credits || [];
+  if(creds.length){
+    document.getElementById('v-credits').innerHTML = creds.map(function(c){
+      return '<dt>' + esc(c.role || '—') + '</dt><dd>' + esc(c.name || '') + '</dd>';
+    }).join('');
+    cWrap.hidden = false;
+  } else { cWrap.hidden = true; }
+
+  about.hidden = (dWrap.hidden && cWrap.hidden);
+
+  /* ── EN COULISSES : images ET vidéos ── */
+  vMGrid.innerHTML = '';
+  if(moreObs) moreObs.disconnect();
+  var list = it.more || [];
+  if(list.length){
+    var nv = list.filter(function(m){ return m.type === 'video'; }).length;
+    var ni = list.length - nv;
+    vMore.hidden = false;
+    vSub.textContent = [
+      ni ? (ni + (ni > 1 ? ' images' : ' image')) : '',
+      nv ? (nv + (nv > 1 ? ' vidéos' : ' vidéo')) : ''
+    ].filter(Boolean).join(' · ');
+
+    list.forEach(function(m){
+      var cell = document.createElement('button');
+      cell.className = 'mcell';
+      cell.setAttribute('aria-label', m.type === 'video' ? 'Agrandir la vidéo' : 'Agrandir l’image');
+      var node;
+      if(m.type === 'video'){
+        node = document.createElement('video');
+        node.muted = true; node.loop = true; node.playsInline = true; node.preload = 'none';
+        node.dataset.src = vidUrl(m.src, 800);
+        var tag = document.createElement('span');
+        tag.className = 'tag'; tag.textContent = 'Vidéo';
+        cell.appendChild(node); cell.appendChild(tag);
+      } else {
+        node = document.createElement('img');
+        node.loading = 'lazy'; node.decoding = 'async'; node.alt = '';
+        node.dataset.src = imgUrl(m.src, 900);
+        cell.appendChild(node);
+      }
+      cell.addEventListener('click', function(){ zoom(m); });
+      vMGrid.appendChild(cell);
+    });
+
+    moreObs = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        var n = e.target;
+        if(e.isIntersecting){
+          if(!n.getAttribute('src') && n.dataset.src) n.setAttribute('src', n.dataset.src);
+          if(n.tagName === 'VIDEO') n.play().catch(function(){});
+        } else if(n.tagName === 'VIDEO' && n.getAttribute('src')){
+          n.pause();
+        }
+      });
+    }, { rootMargin:'250px' });
+    vMGrid.querySelectorAll('img,video').forEach(function(n){ moreObs.observe(n); });
+  } else {
+    vMore.hidden = true;
+  }
+
+  var pool = ITEMS.filter(function(x){ return !x.soon; });
+  var idx  = pool.map(function(x){ return x.key; }).indexOf(it.key);
+  var nxt  = pool.length > 1 ? pool[mod(idx + 1, pool.length)] : null;
+  if(nxt && nxt.key !== it.key){
+    vNextR.hidden = false;
+    vNext.querySelector('b').textContent = nxt.title;
+    vNext.onclick = function(){ location.hash = nxt.key; };
+  } else { vNextR.hidden = true; }
+
+  closePanel(infoV);
+  openPanel(view);
+  view.scrollTop = 0;
+  document.getElementById('v-back').focus();
+}
+
+function closeView(){
+  closePanel(view, function(){
+    vStage.innerHTML = '';
+    vMGrid.innerHTML = '';
+    if(moreObs) moreObs.disconnect();
+  });
+  if(lastFocus && document.contains(lastFocus)) lastFocus.focus();
+}
+
+/* ── loupe ── */
+var zoomEl = document.getElementById('zoom'), zSlot = document.getElementById('z-slot');
+function zoom(m){
+  zSlot.innerHTML = '';
+  var n;
+  if(m.type === 'video'){
+    n = document.createElement('video');
+    n.controls = true; n.autoplay = true; n.loop = true; n.playsInline = true; n.muted = true;
+    n.src = vidUrl(m.src, 1400);
+  } else {
+    n = document.createElement('img'); n.alt = ''; n.src = imgUrl(m.src, 1800);
+  }
+  zSlot.appendChild(n);
+  openPanel(zoomEl);
+  document.getElementById('z-close').focus();
+}
+function closeZoom(){ closePanel(zoomEl, function(){ zSlot.innerHTML = ''; }); }
+document.getElementById('z-close').addEventListener('click', closeZoom);
+zoomEl.addEventListener('click', function(e){ if(e.target === zoomEl) closeZoom(); });
+
+/* ══════════════════════════════════════════════
+   ROUTAGE
+══════════════════════════════════════════════ */
+function route(){
+  var h = location.hash.replace('#','');
+  hidePeek();
+  if(h === 'infos'){
+    closePanel(view, function(){ vStage.innerHTML = ''; vMGrid.innerHTML = ''; });
+    openPanel(infoV);
+    document.getElementById('i-back').focus();
+    return;
+  }
+  var it = ALL.filter(function(x){ return x.key === h; })[0];
+  if(it && !it.soon){ open(it); }
+  else { closeView(); closePanel(infoV); }
+}
+function backHome(){
+  history.pushState(null, '', location.pathname + location.search);
+  closeView(); closePanel(infoV);
+  if(lastFocus && document.contains(lastFocus)) lastFocus.focus();
+}
+document.getElementById('v-back').addEventListener('click', backHome);
+document.getElementById('i-back').addEventListener('click', backHome);
+document.getElementById('nav-info').addEventListener('click', function(){ location.hash = 'infos'; });
+window.addEventListener('hashchange', route);
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Escape') return;
+  if(isOpen(zoomEl)){ closeZoom(); return; }
+  if(isOpen(view) || isOpen(infoV)) backHome();
+});
+
+boot();
+})();
+</script>
+</body>
+</html>
