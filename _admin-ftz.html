@@ -412,6 +412,34 @@ body {
                     <input class="form-input" id="proj-video-url" type="url" placeholder="https://...">
                 </div>
                 <div class="form-group full">
+                    <label class="form-label">Miniature du projet (affichée sur le mur)</label>
+                    <div class="form-file-area" id="thumb-file-area">
+                        <div class="form-file-label" id="thumb-file-label">Glisser ou cliquer une image (.jpg, .webp, .png)</div>
+                        <input type="file" id="proj-thumb-file" accept="image/*">
+                        <div class="upload-progress" id="thumb-upload-progress">
+                            <div class="upload-progress-bar" id="thumb-upload-bar"></div>
+                        </div>
+                    </div>
+                    <input class="form-input" id="proj-thumb-url" type="url" placeholder="— ou — https://... (vide = image extraite de la vidéo)" style="margin-top:8px">
+                    <div id="thumb-preview-wrap" style="margin-top:10px;display:none">
+                        <img id="thumb-preview" style="width:180px;height:113px;object-fit:cover;border:1px solid rgba(255,255,255,.15)">
+                        <button class="btn-small" id="btn-clear-thumb" style="margin-left:10px;vertical-align:top">Retirer</button>
+                    </div>
+                </div>
+                <div class="form-group full">
+                    <label class="form-label">Description — ce que tu as fait sur ce projet</label>
+                    <textarea class="form-textarea" id="proj-description" rows="5" placeholder="Direction artistique et montage d'une capsule de trois films pour…"></textarea>
+                </div>
+                <div class="form-group full">
+                    <label class="form-label">Crédits — rôle et personne</label>
+                    <div class="more-list" id="proj-credits-list"></div>
+                    <div class="more-add-row">
+                        <input class="form-input" id="cred-role" type="text" placeholder="Direction artistique">
+                        <input class="form-input" id="cred-name" type="text" placeholder="François Teulé">
+                        <button class="btn-small" id="btn-add-credit">+ CRÉDIT</button>
+                    </div>
+                </div>
+                <div class="form-group full">
                     <label class="form-label">Médias "En coulisses" — glisser pour réordonner</label>
                     <div class="more-list" id="proj-more-list"></div>
                     <div class="more-add-row">
@@ -666,6 +694,7 @@ function bindFileLabel(inputId, labelId) {
     });
 }
 bindFileLabel('proj-video-file',  'proj-file-label');
+bindFileLabel('proj-thumb-file',  'thumb-file-label');
 bindFileLabel('media-img-file',   'media-file-label');
 bindFileLabel('client-logo-file', 'client-file-label');
 
@@ -690,7 +719,9 @@ async function loadProjects() {
             const isSoon = p.status === 'coming_soon';
             row.dataset.id = p.id;
             row.draggable = true;
-            const vidThumb = p.video_url ? `<video class="item-thumb-video" src="${p.video_url}" preload="metadata" muted></video>` : `<div class="item-thumb-placeholder">VID</div>`;
+            const vidThumb = p.thumb_url
+                ? `<img class="item-thumb-video" src="${p.thumb_url}" loading="lazy">`
+                : (p.video_url ? `<video class="item-thumb-video" src="${p.video_url}" preload="metadata" muted></video>` : `<div class="item-thumb-placeholder">VID</div>`);
             row.innerHTML = `
                 <div class="drag-handle" title="Glisser pour réordonner">⠿</div>
                 ${vidThumb}
@@ -843,6 +874,122 @@ document.getElementById('proj-more-file').addEventListener('change', async funct
     }
 });
 
+// ══════════════════════════════════════════════
+//  MINIATURE DU PROJET
+// ══════════════════════════════════════════════
+function showThumbPreview(url) {
+    const wrap = document.getElementById('thumb-preview-wrap');
+    const img  = document.getElementById('thumb-preview');
+    if (url) { img.src = url; wrap.style.display = 'block'; }
+    else { img.removeAttribute('src'); wrap.style.display = 'none'; }
+}
+
+document.getElementById('proj-thumb-url').addEventListener('input', function () {
+    showThumbPreview(this.value.trim());
+});
+
+document.getElementById('btn-clear-thumb').addEventListener('click', () => {
+    document.getElementById('proj-thumb-url').value = '';
+    document.getElementById('proj-thumb-file').value = '';
+    showThumbPreview('');
+});
+
+document.getElementById('proj-thumb-file').addEventListener('change', async function () {
+    const file = this.files[0];
+    if (!file) return;
+    const label    = document.getElementById('thumb-file-label');
+    const bar      = document.getElementById('thumb-upload-bar');
+    const progress = document.getElementById('thumb-upload-progress');
+    label.textContent = 'Upload en cours…';
+    progress.style.display = 'block';
+    try {
+        const url = await uploadFile(file, 'miniatures', bar);
+        document.getElementById('proj-thumb-url').value = url;
+        showThumbPreview(url);
+        label.textContent = '\u2713 ' + file.name;
+        label.classList.add('file-chosen');
+        this.value = '';
+        setTimeout(() => {
+            label.textContent = 'Glisser ou cliquer une image (.jpg, .webp, .png)';
+            label.classList.remove('file-chosen');
+            progress.style.display = 'none';
+            bar.style.width = '0%';
+        }, 2500);
+    } catch (e) {
+        label.textContent = 'Erreur : ' + e.message;
+        progress.style.display = 'none';
+    }
+});
+
+// ══════════════════════════════════════════════
+//  CRÉDITS
+// ══════════════════════════════════════════════
+let editingCredits = []; // [{role, name}, ...]
+
+function renderCreditsList() {
+    const list = document.getElementById('proj-credits-list');
+    list.innerHTML = '';
+    if (!editingCredits.length) {
+        list.innerHTML = '<div style="font-size:.48rem;letter-spacing:2px;color:var(--muted);padding:10px 0">Aucun crédit — ajoutez-en ci-dessous</div>';
+        return;
+    }
+    editingCredits.forEach((c, idx) => {
+        const el = document.createElement('div');
+        el.className = 'more-item';
+        el.draggable = true;
+        el.dataset.idx = idx;
+        el.innerHTML =
+            '<div class="drag-handle">\u283F</div>' +
+            '<span class="more-type">' + (c.role || '—') + '</span>' +
+            '<span class="more-url">' + (c.name || '') + '</span>' +
+            '<button class="more-del" data-idx="' + idx + '">\u00D7</button>';
+        el.querySelector('.more-del').addEventListener('click', () => {
+            editingCredits.splice(idx, 1);
+            renderCreditsList();
+        });
+        el.addEventListener('dragstart', e => {
+            e.dataTransfer.effectAllowed = 'move';
+            el.classList.add('dragging');
+            list._dragC = el;
+        });
+        el.addEventListener('dragend', () => {
+            el.classList.remove('dragging');
+            list.querySelectorAll('.more-item').forEach(r => r.classList.remove('drag-over'));
+            editingCredits = [...list.querySelectorAll('.more-item[data-idx]')]
+                .map(r => editingCredits[parseInt(r.dataset.idx)]).filter(Boolean);
+            renderCreditsList();
+        });
+        el.addEventListener('dragover', e => {
+            e.preventDefault();
+            if (list._dragC && list._dragC !== el) {
+                list.querySelectorAll('.more-item').forEach(r => r.classList.remove('drag-over'));
+                el.classList.add('drag-over');
+                const items = [...list.querySelectorAll('.more-item')];
+                if (items.indexOf(list._dragC) < items.indexOf(el)) el.after(list._dragC);
+                else el.before(list._dragC);
+            }
+        });
+        list.appendChild(el);
+    });
+}
+
+function addCreditFromForm() {
+    const role = document.getElementById('cred-role').value.trim();
+    const name = document.getElementById('cred-name').value.trim();
+    if (!role && !name) return;
+    editingCredits.push({ role, name });
+    document.getElementById('cred-role').value = '';
+    document.getElementById('cred-name').value = '';
+    renderCreditsList();
+    document.getElementById('cred-role').focus();
+}
+document.getElementById('btn-add-credit').addEventListener('click', addCreditFromForm);
+['cred-role', 'cred-name'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); addCreditFromForm(); }
+    });
+});
+
 // ── État édition ──────────────────────────────────────────────
 let editingProjectId = null;
 
@@ -853,6 +1000,13 @@ function startEditProject(p) {
     document.getElementById('proj-title').value     = p.title || '';
     document.getElementById('proj-status').value    = p.status || 'published';
     document.getElementById('proj-video-url').value = p.video_url || '';
+    document.getElementById('proj-thumb-url').value   = p.thumb_url || '';
+    document.getElementById('proj-description').value = p.description || '';
+    showThumbPreview(p.thumb_url || '');
+    let pc = p.credits;
+    if (!Array.isArray(pc)) { try { pc = JSON.parse(pc || '[]'); } catch { pc = []; } }
+    editingCredits = (pc || []).map(c => ({ ...c }));
+    renderCreditsList();
     renderMoreList();
     document.getElementById('btn-add-project').textContent = 'METTRE À JOUR';
     document.getElementById('btn-cancel-edit').style.display = 'inline-block';
@@ -862,6 +1016,12 @@ function startEditProject(p) {
 function resetProjectForm() {
     editingProjectId = null;
     editingMore = [];
+    editingCredits = [];
+    document.getElementById('proj-thumb-url').value   = '';
+    document.getElementById('proj-thumb-file').value  = '';
+    document.getElementById('proj-description').value = '';
+    showThumbPreview('');
+    renderCreditsList();
     document.getElementById('proj-form-title').textContent    = 'NOUVEAU PROJET';
     document.getElementById('proj-title').value               = '';
     document.getElementById('proj-video-url').value           = '';
@@ -878,6 +1038,8 @@ document.getElementById('btn-cancel-edit').addEventListener('click', resetProjec
 document.getElementById('btn-add-project').addEventListener('click', async () => {
     const title    = document.getElementById('proj-title').value.trim();
     const status   = document.getElementById('proj-status').value;
+    const thumbUrl = document.getElementById('proj-thumb-url').value.trim();
+    const descr    = document.getElementById('proj-description').value.trim();
     const file     = document.getElementById('proj-video-file').files[0];
     let   videoUrl = document.getElementById('proj-video-url').value.trim();
     const statusEl = document.getElementById('proj-status-msg');
@@ -894,10 +1056,12 @@ document.getElementById('btn-add-project').addEventListener('click', async () =>
             videoUrl = await uploadFile(file, 'videos', document.getElementById('proj-upload-bar'));
         }
         if (editingProjectId) {
-            await api('PUT', '/projects/' + editingProjectId, { title, status, video_url: videoUrl, more: editingMore });
+            await api('PUT', '/projects/' + editingProjectId, { title, status, video_url: videoUrl, more: editingMore,
+                thumb_url: thumbUrl, description: descr, credits: editingCredits });
             setStatus(statusEl, 'Projet mis à jour !', 'ok');
         } else {
-            await api('POST', '/projects', { title, status, video_url: videoUrl, more: editingMore });
+            await api('POST', '/projects', { title, status, video_url: videoUrl, more: editingMore,
+                thumb_url: thumbUrl, description: descr, credits: editingCredits });
             setStatus(statusEl, 'Projet ajouté !', 'ok');
         }
         resetProjectForm();
@@ -1112,6 +1276,7 @@ document.getElementById('btn-add-client').addEventListener('click', async () => 
 // ══════════════════════════════════════════════
 function loadAll() {
     renderMoreList();
+    renderCreditsList();
     loadProjects();
     loadMedia();
     loadClients();
