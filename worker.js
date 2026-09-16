@@ -79,20 +79,23 @@ export default {
                         .all();
                     results.forEach(p => {
                         try { p.more = JSON.parse(p.more_urls || "[]"); } catch { p.more = []; }
+                        try { p.credits = JSON.parse(p.credits || "[]"); } catch { p.credits = []; }
                     });
                     return json(results);
                 }
 
                 if (method === "POST") {
-                    const { title, status = "published", video_url, more = [] } = await request.json();
+                    const { title, status = "published", video_url, more = [],
+                            thumb_url = "", description = "", credits = [], project_date = "" } = await request.json();
                     if (!title || !video_url) return json({ error: "title et video_url requis" }, 400);
                     // sort_order = max existant + 1
                     const { results: rows } = await env.portfolio_db
                         .prepare("SELECT MAX(sort_order) as m FROM projects").all();
                     const nextOrder = ((rows[0]?.m) ?? 0) + 1;
                     await env.portfolio_db
-                        .prepare("INSERT INTO projects (title, status, video_url, more_urls, sort_order) VALUES (?, ?, ?, ?, ?)")
-                        .bind(title, status, video_url, JSON.stringify(more), nextOrder)
+                        .prepare("INSERT INTO projects (title, status, video_url, more_urls, sort_order, thumb_url, description, credits, project_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                        .bind(title, status, video_url, JSON.stringify(more), nextOrder,
+                              thumb_url || "", description || "", JSON.stringify(credits || []), project_date || "")
                         .run();
                     return json({ success: true });
                 }
@@ -112,10 +115,12 @@ export default {
             // PUT /projects/:id
             if (path.match(/^\/projects\/\d+$/) && method === "PUT") {
                 const id = path.split("/")[2];
-                const { title, status, video_url, more = [] } = await request.json();
+                const { title, status, video_url, more = [],
+                        thumb_url = "", description = "", credits = [], project_date = "" } = await request.json();
                 await env.portfolio_db
-                    .prepare("UPDATE projects SET title=?, status=?, video_url=?, more_urls=? WHERE id=?")
-                    .bind(title, status, video_url, JSON.stringify(more), id)
+                    .prepare("UPDATE projects SET title=?, status=?, video_url=?, more_urls=?, thumb_url=?, description=?, credits=?, project_date=? WHERE id=?")
+                    .bind(title, status, video_url, JSON.stringify(more),
+                          thumb_url || "", description || "", JSON.stringify(credits || []), project_date || "", id)
                     .run();
                 return json({ success: true });
             }

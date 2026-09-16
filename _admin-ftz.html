@@ -397,6 +397,10 @@ body {
                         <option value="coming_soon">Coming Soon</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label class="form-label">Date du projet</label>
+                    <input class="form-input" id="proj-date" type="text" placeholder="Fév. 2026">
+                </div>
                 <div class="form-group full">
                     <label class="form-label">Fichier vidéo (upload vers R2)</label>
                     <div class="form-file-area" id="proj-file-area">
@@ -727,7 +731,7 @@ async function loadProjects() {
                 ${vidThumb}
                 <div class="item-info">
                     <div class="item-title">${p.title || '—'}</div>
-                    <div class="item-meta">${p.video_url || '—'}</div>
+                    <div class="item-meta">${p.project_date ? p.project_date + ' · ' : ''}${p.video_url || '—'}</div>
                 </div>
                 ${isSoon ? '<span class="item-badge soon">Coming Soon</span>' : '<span class="item-badge">Publié</span>'}
                 <div class="item-actions">
@@ -999,6 +1003,7 @@ function startEditProject(p) {
     document.getElementById('proj-form-title').textContent = 'MODIFIER — ' + p.title;
     document.getElementById('proj-title').value     = p.title || '';
     document.getElementById('proj-status').value    = p.status || 'published';
+    document.getElementById('proj-date').value      = p.project_date || '';
     document.getElementById('proj-video-url').value = p.video_url || '';
     document.getElementById('proj-thumb-url').value   = p.thumb_url || '';
     document.getElementById('proj-description').value = p.description || '';
@@ -1024,6 +1029,7 @@ function resetProjectForm() {
     renderCreditsList();
     document.getElementById('proj-form-title').textContent    = 'NOUVEAU PROJET';
     document.getElementById('proj-title').value               = '';
+    document.getElementById('proj-date').value                = '';
     document.getElementById('proj-video-url').value           = '';
     document.getElementById('proj-video-file').value          = '';
     document.getElementById('proj-file-label').textContent    = 'Glisser ou cliquer pour choisir une vidéo (.mp4)';
@@ -1038,6 +1044,7 @@ document.getElementById('btn-cancel-edit').addEventListener('click', resetProjec
 document.getElementById('btn-add-project').addEventListener('click', async () => {
     const title    = document.getElementById('proj-title').value.trim();
     const status   = document.getElementById('proj-status').value;
+    const projDate = document.getElementById('proj-date').value.trim();
     const thumbUrl = document.getElementById('proj-thumb-url').value.trim();
     const descr    = document.getElementById('proj-description').value.trim();
     const file     = document.getElementById('proj-video-file').files[0];
@@ -1057,11 +1064,11 @@ document.getElementById('btn-add-project').addEventListener('click', async () =>
         }
         if (editingProjectId) {
             await api('PUT', '/projects/' + editingProjectId, { title, status, video_url: videoUrl, more: editingMore,
-                thumb_url: thumbUrl, description: descr, credits: editingCredits });
+                thumb_url: thumbUrl, description: descr, credits: editingCredits, project_date: projDate });
             setStatus(statusEl, 'Projet mis à jour !', 'ok');
         } else {
             await api('POST', '/projects', { title, status, video_url: videoUrl, more: editingMore,
-                thumb_url: thumbUrl, description: descr, credits: editingCredits });
+                thumb_url: thumbUrl, description: descr, credits: editingCredits, project_date: projDate });
             setStatus(statusEl, 'Projet ajouté !', 'ok');
         }
         resetProjectForm();
