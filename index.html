@@ -78,10 +78,10 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
 
 #wall{
   position:absolute;inset:0;
-  perspective:1250px;perspective-origin:50% 48%;
+  perspective:1120px;perspective-origin:50% 50%;
   overflow:hidden;cursor:grab;touch-action:none;
 }
-#wall.drag{cursor:grabbing}
+#wall[data-dragging="true"]{cursor:grabbing}
 /* Les tuiles sont reculées en Z, donc placées derrière le plan de leur
    propre conteneur : sans ceci, #plane intercepte la souris partout sauf
    au centre exact, et le survol ne répond nulle part ailleurs. */
@@ -95,35 +95,37 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
   background:radial-gradient(ellipse 78% 72% at 50% 46%,rgba(5,5,5,0) 38%,rgba(5,5,5,.55) 78%,rgba(5,5,5,.9) 100%)}
 
 .tile{
-  position:absolute;top:0;left:0;
-  transform-origin:50% 50%;
+  position:absolute;top:50%;left:50%;
+  transform-origin:50% 50%;transform-style:preserve-3d;backface-visibility:hidden;
   background:none;border:none;padding:0;overflow:visible;
-  text-align:left;
+  text-align:left;contain:layout style;will-change:transform,opacity;
   pointer-events:auto;
 }
 .tframe{
   display:block;width:100%;height:100%;position:relative;overflow:hidden;
-  background:#0c0c0c;border:1px solid rgba(255,255,255,.08);
-  transition:border-color .2s ease,box-shadow .2s ease;
+  background:#0c0c0c;border:1px solid rgba(255,255,255,.08);border-radius:10px;
+  transform-origin:50% 50%;backface-visibility:hidden;
+  transition:border-color .2s ease,box-shadow .2s ease,transform .46s cubic-bezier(.16,1,.3,1);
 }
-.tframe img{width:100%;height:100%;object-fit:cover;opacity:.9;transition:opacity .2s ease}
+.tframe img{width:100%;height:100%;object-fit:cover;opacity:.9;
+  filter:blur(var(--perspective-blur,0px));transition:opacity .2s ease}
 .tframe .ph{
   position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   padding:10px;text-align:center;
   font-size:.52rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.22);
 }
-/* Nom affiché sous la vignette, au survol seulement */
+/* Nom du projet, en surimpression bas de vignette, au survol seulement */
 .tlabel{
-  position:absolute;top:100%;left:-20%;right:-20%;margin-top:9px;
-  text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;
-  color:rgba(255,255,255,.92);text-shadow:0 1px 10px rgba(0,0,0,.9);
-  opacity:0;transform:translateY(-3px);
+  position:absolute;left:14px;right:14px;bottom:16px;
+  text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;
+  color:rgba(255,255,255,.96);text-shadow:0 1px 10px rgba(0,0,0,.9);
+  opacity:0;transform:translateY(8px);
   transition:opacity .18s ease,transform .18s ease;pointer-events:none;
 }
 .tlabel em{font-style:normal;color:rgba(255,255,255,.5)}
 @media (hover:hover){
-  .tile:hover .tframe{border-color:rgba(255,255,255,.85);box-shadow:0 0 0 1px rgba(255,255,255,.3)}
+  .tile:hover .tframe{border-color:rgba(255,255,255,.85);box-shadow:0 0 0 1px rgba(255,255,255,.3);transform:scale(1.075)}
   .tile:hover .tframe img{opacity:1}
 }
 .tile:hover .tlabel,.tile:focus-visible .tlabel{opacity:1;transform:translateY(0)}
@@ -307,6 +309,9 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
   text-transform:uppercase;color:var(--dim)}
 #zoom .close:hover{color:var(--fg)}
 
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
 .empty{padding:60px 0;color:var(--dim);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase}
 #boot{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center}
 #boot[hidden]{display:none}
@@ -334,6 +339,7 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
   <section id="wall" aria-label="Mur de projets, faire défiler ou glisser">
     <div id="plane"></div>
     <div id="vignette"></div>
+    <p class="sr-only" id="archive-live" aria-live="polite"></p>
   </section>
 
   <section id="listwrap" hidden aria-label="Liste des projets">
@@ -478,6 +484,20 @@ function mod(n, m){ return ((n % m) + m) % m; }
 
 var reduced = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 
+/* ── Pont vers le moteur d'archive (src/archive-engine.js) ──
+   Le module est chargé en `type="module"`, donc différé : il s'exécute
+   après ce script classique. On lui passe les données et les aides via
+   `window`, et une promesse qui se résout une fois les projets prêts. */
+var archiveReadyResolve;
+window._archiveReady = new Promise(function(res){ archiveReadyResolve = res; });
+window.ArchiveHelpers = {
+  esc: esc,
+  thumb: thumb,
+  isReduced: function(){ return reduced; },
+  isBlocked: function(){ return MODE !== 'wall' || !document.getElementById('view').hidden; },
+  open: function(key){ location.hash = key; }
+};
+
 /* ══════════════════════════════════════════════
    VIGNETTES : une seule petite image par projet,
    fabriquée une fois puis réutilisée par toutes les
@@ -573,10 +593,8 @@ var ALL = [], ITEMS = [], FILTER = 'TOUT', MODE = 'wall';
 var lastFocus = null;
 
 var wallEl = document.getElementById('wall');
-var plane  = document.getElementById('plane');
 var listEl = document.getElementById('list');
 var listWrap = document.getElementById('listwrap');
-var cntEl  = document.getElementById('count');
 var filtEl = document.getElementById('filters');
 
 var yEl = document.getElementById('year');
@@ -632,10 +650,11 @@ function boot(){
 
     buildFilters();
     buildLogos(clients);
+    window.ArchiveData = ALL;
+    if(archiveReadyResolve){ archiveReadyResolve(); archiveReadyResolve = null; }
     apply();
     document.getElementById('boot').hidden = true;
     route();
-    loop();
   });
 }
 
@@ -662,217 +681,20 @@ function buildFilters(){
 
 function apply(){
   ITEMS = ALL.filter(function(i){ return FILTER === 'TOUT' || i.cat === FILTER; });
-  STRIDE = pickStride(ITEMS.length);
   renderList();
-  resetWall();
+  /* Le contenu des tuiles est fixé une fois pour toutes sur l'ensemble ALL ;
+     changer de filtre ne fait qu'estomper et regrouper les tuiles déjà en
+     place — voir src/archive-engine.js (kavieng-archive-spec.md). */
+  if(window.ArchiveEngine) window.ArchiveEngine.setFilter(FILTER);
 }
 
 /* ══════════════════════════════════════════════
-   MUR 3D — grille infinie, nœuds recyclés
+   MUR 3D — grille torique projetée, inertie, répulsion au survol.
+   Moteur complet dans src/archive-engine.js (module ES, importe GSAP),
+   qui gère molette / glisser / clavier / redimensionnement sur #wall
+   lui-même. Ce script ne fait plus que lui fournir les données et
+   réagir aux changements de filtre / de mode.
 ══════════════════════════════════════════════ */
-var CW = 300, CH = 200, GAPX = 34, GAPY = 30;
-var tx = 0, ty = 0, sx = 0, sy = 0;     /* cible et position lissée */
-var tiles = {}, freeNodes = [], scrollAcc = 0;
-
-function sizes(){
-  /* En vue liste le mur est masqué : clientWidth vaut 0. On retombe alors
-     sur la largeur de fenêtre, et on garde un plancher, sinon le pas de
-     grille vaut zéro et la boucle de placement ne se termine jamais. */
-  var vw = wallEl.clientWidth || window.innerWidth || 1024;
-  CW = vw < 700 ? Math.round(vw / 2.2) : Math.max(210, Math.min(330, vw / 5.1));
-  CW = Math.max(120, CW);
-  CH = Math.max(80, Math.round(CW * 0.635));
-  GAPX = Math.max(10, Math.round(CW * 0.20));
-  GAPY = Math.max(10, Math.round(CH * 0.28));
-}
-
-/* Décalage d'une rangée à l'autre : premier entier ≥ 3 premier avec le
-   nombre de projets, pour que descendre change toujours de projet et que
-   la boucle parcoure bien toute la sélection. */
-var STRIDE = 3;
-function gcd(a, b){ while(b){ var t = a % b; a = b; b = t; } return a; }
-function pickStride(n){
-  if(n < 4) return 1;
-  for(var s = 3; s < n + 4; s++){ if(gcd(s, n) === 1) return s; }
-  return 1;
-}
-
-function itemAt(i, j){
-  if(!ITEMS.length) return null;
-  return ITEMS[mod(i + j * STRIDE, ITEMS.length)];
-}
-
-function take(){
-  var n = freeNodes.pop();
-  if(n){ n.style.display = ''; return n; }
-  n = document.createElement('button');
-  n.className = 'tile';
-  n.style.width = CW + 'px';
-  n.style.height = CH + 'px';
-  n._frame = document.createElement('span'); n._frame.className = 'tframe';
-  n._lab   = document.createElement('span'); n._lab.className = 'tlabel';
-  n.appendChild(n._frame); n.appendChild(n._lab);
-  n.addEventListener('click', function(e){
-    e.preventDefault();
-    if(dragged) return;
-    var it = n._item;
-    if(it && !it.soon){ lastFocus = n; location.hash = it.key; }
-  });
-  plane.appendChild(n);
-  return n;
-}
-function release(n){ n.style.display = 'none'; freeNodes.push(n); }
-
-function fill(node, it){
-  if(!it){ node._item = null; return; }
-  if(node._item && node._item.key === it.key) return;
-  node._item = it;
-
-  node.className = 'tile' + (it.soon ? ' soon' : '');
-  node.setAttribute('aria-label', it.soon ? 'Projet à venir' : ('Ouvrir ' + it.title));
-
-  var frame = node._frame, lab = node._lab;
-  frame.innerHTML = '<span class="ph">' + esc(it.soon ? 'Bientôt' : it.title) + '</span>';
-  lab.innerHTML = it.soon ? 'Bientôt'
-    : esc(it.title) + (it.year ? ' <em>· ' + esc(it.year) + '</em>' : '');
-
-  if(it.soon || !it.src) return;
-
-  /* Une miniature importée dans le back-office remplace l'arrêt sur image. */
-  thumb(it.thumb || it.src, it.thumb ? 'photo' : it.kind, function(url){
-    if(node._item !== it || !url) return;
-    var im = node._img || (node._img = new Image());
-    im.alt = ''; im.decoding = 'async';
-    if(im.getAttribute('src') !== url) im.src = url;
-    frame.innerHTML = '';
-    frame.appendChild(im);
-  });
-}
-
-function resetWall(){
-  Object.keys(tiles).forEach(function(k){ release(tiles[k]); });
-  tiles = {};
-  sizes();
-  freeNodes.forEach(function(n){ n.style.width = CW + 'px'; n.style.height = CH + 'px'; n._item = null; });
-  if(MODE === 'wall') layout(true);
-}
-
-function layout(force){
-  if(MODE !== 'wall' || !ITEMS.length){ return; }
-  var vw = wallEl.clientWidth, vh = wallEl.clientHeight;
-  var stepX = CW + GAPX, stepY = CH + GAPY;
-  if(vw < 2 || vh < 2 || stepX < 2 || stepY < 2) return;
-  var cx = vw / 2, cy = vh * 0.46;
-  var mx = stepX * 0.58, my = stepY * 0.58;
-
-  var i0 = Math.floor((sx - cx - mx) / stepX), i1 = Math.ceil((sx + cx + mx) / stepX);
-  var j0 = Math.floor((sy - cy - my) / stepY), j1 = Math.ceil((sy + (vh - cy) + my) / stepY);
-
-  /* Filet de sécurité : jamais plus de 160 tuiles à l'écran. */
-  if((i1 - i0 + 1) * (j1 - j0 + 1) > 160){ i1 = i0 + 15; j1 = j0 + 9; }
-
-  var seen = {};
-
-  for(var j = j0; j <= j1; j++){
-    for(var i = i0; i <= i1; i++){
-      var key = i + ':' + j;
-      seen[key] = 1;
-      var node = tiles[key];
-      if(!node){ node = take(); tiles[key] = node; fill(node, itemAt(i, j)); }
-
-      var x = i * stepX - sx + cx;
-      var y = j * stepY - sy + cy;
-      var dx = (x - cx) / (cx || 1);
-      var dy = (y - cy) / (vh * 0.5 || 1);
-
-      var rotY = -dx * 13;
-      var rotX = dy * 6;
-      var tz   = -(dx * dx * 190 + dy * dy * 130);
-      var op   = 1 - Math.min(.72, (dx * dx * .42 + dy * dy * .40));
-
-      /* On n'écrit dans le style que si la valeur a réellement changé :
-         c'est ce qui évite un recalcul complet à chaque image. */
-      var tr = 'translate3d(' + Math.round(x - CW / 2) + 'px,' + Math.round(y - CH / 2) + 'px,' +
-               Math.round(tz) + 'px) rotateY(' + rotY.toFixed(1) + 'deg) rotateX(' + rotX.toFixed(1) + 'deg)';
-      if(node._tr !== tr){ node.style.transform = tr; node._tr = tr; }
-      var o2 = op.toFixed(2);
-      if(node._op !== o2){ node.style.opacity = o2; node._op = o2; }
-      /* Aucun z-index ici : dans un contexte preserve-3d, un z-index
-         explicite impose un ordre différent de l'ordre 3D réel, et la
-         souris finit par toucher une autre tuile que celle qu'on voit. */
-    }
-  }
-
-  for(var k in tiles){
-    if(!seen[k]){ release(tiles[k]); delete tiles[k]; }
-  }
-
-  var cn = '↓ ' + ('000' + Math.abs(Math.round(scrollAcc / 12)) % 10000).slice(-4);
-  if(cntEl._v !== cn){ cntEl.textContent = cn; cntEl._v = cn; }
-}
-
-var raf = null;
-function loop(){
-  raf = requestAnimationFrame(loop);
-  if(MODE !== 'wall') return;
-  var k = reduced ? 1 : 0.12;
-  var ndx = (tx - sx) * k, ndy = (ty - sy) * k;
-  if(Math.abs(ndx) < .05 && Math.abs(ndy) < .05){
-    if(sx === tx && sy === ty) return;
-    sx = tx; sy = ty;
-  } else { sx += ndx; sy += ndy; }
-  layout(false);
-}
-
-/* ── entrées : molette, glisser, clavier ── */
-/* Défilement verrouillé sur l'axe vertical : le mur ne bouge qu'en Y. */
-wallEl.addEventListener('wheel', function(e){
-  e.preventDefault();
-  ty += e.deltaY;
-  scrollAcc += Math.abs(e.deltaY);
-}, { passive:false });
-
-/* Pas de setPointerCapture ici : la capture redirige l'événement « click »
-   vers le mur et les tuiles ne le reçoivent jamais. On écoute donc le
-   déplacement et le relâchement au niveau de la fenêtre. */
-var down = false, dragged = false, px = 0, py = 0;
-wallEl.addEventListener('pointerdown', function(e){
-  if(e.button !== undefined && e.button !== 0) return;
-  down = true; dragged = false; px = e.clientX; py = e.clientY;
-  wallEl.classList.add('drag');
-});
-window.addEventListener('pointermove', function(e){
-  if(!down) return;
-  var dx = e.clientX - px, dy = e.clientY - py;
-  if(Math.abs(dx) + Math.abs(dy) > 6) dragged = true;
-  if(dragged){
-    ty -= dy;                 /* horizontal ignoré : axe Y uniquement */
-    scrollAcc += Math.abs(dy);
-  }
-  px = e.clientX; py = e.clientY;
-}, { passive:true });
-function up(){
-  if(!down) return;
-  down = false;
-  wallEl.classList.remove('drag');
-  /* on laisse passer le click qui suit immédiatement un vrai glisser */
-  setTimeout(function(){ dragged = false; }, 60);
-}
-window.addEventListener('pointerup', up);
-window.addEventListener('pointercancel', up);
-
-document.addEventListener('keydown', function(e){
-  if(MODE !== 'wall' || !document.getElementById('view').hidden || !document.getElementById('infoview').hidden) {
-    /* pas de navigation clavier du mur quand un panneau est ouvert */
-  }
-  if(MODE !== 'wall') return;
-  if(!document.getElementById('view').hidden) return;
-  var step = CH + GAPY;
-  if(e.key === 'ArrowDown'){ ty += step; e.preventDefault(); }
-  else if(e.key === 'ArrowUp'){ ty -= step; e.preventDefault(); }
-});
-
-window.addEventListener('resize', function(){ resetWall(); });
 
 /* ══════════════════════════════════════════════
    VUE LISTE
@@ -985,7 +807,7 @@ function setMode(m){
   document.getElementById('hint').style.visibility = (m === 'wall') ? '' : 'hidden';
   document.getElementById('count').style.visibility = (m === 'wall') ? '' : 'hidden';
   hidePeek();
-  if(m === 'wall') resetWall();
+  if(window.ArchiveEngine) window.ArchiveEngine.setEnabled(m === 'wall');
 }
 bWall.addEventListener('click', function(){ setMode('wall'); });
 bList.addEventListener('click', function(){ setMode('list'); });
@@ -1188,5 +1010,6 @@ document.addEventListener('keydown', function(e){
 boot();
 })();
 </script>
+<script type="module" src="/src/archive-engine.js"></script>
 </body>
 </html>
