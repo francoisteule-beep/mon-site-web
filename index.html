@@ -141,7 +141,7 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
   padding-bottom:18px;pointer-events:none;
 }
 #foot>*{pointer-events:auto}
-#hint{font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.3)}
+#credit{font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.3)}
 #count{font-size:.55rem;letter-spacing:.18em;text-align:right;color:rgba(255,255,255,.3);font-variant-numeric:tabular-nums}
 #center{display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0}
 .filters{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
@@ -153,7 +153,7 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
 .chip[aria-pressed="true"]{color:#050505;background:var(--fg)}
 .chip .n{opacity:.5;margin-left:5px}
 @media (max-width:720px){
-  #hint,#count{display:none}
+  #credit,#count{display:none}
   #foot{grid-template-columns:1fr}
   #center{align-items:center}
 }
@@ -352,7 +352,7 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
 </main>
 
 <div id="foot">
-  <div id="hint">Molette ou glisser : défiler &nbsp;·&nbsp; Survol : nom du projet</div>
+  <div id="credit">© François Teulé 2026</div>
   <div id="center">
     <div class="filters" id="filters" role="group" aria-label="Filtrer"></div>
   </div>
@@ -804,7 +804,7 @@ function setMode(m){
   wallEl.classList.toggle('off', m !== 'wall');
   listWrap.hidden = false;
   listWrap.classList.toggle('off', m !== 'list');
-  document.getElementById('hint').style.visibility = (m === 'wall') ? '' : 'hidden';
+  document.getElementById('credit').style.visibility = (m === 'wall') ? '' : 'hidden';
   document.getElementById('count').style.visibility = (m === 'wall') ? '' : 'hidden';
   hidePeek();
   if(window.ArchiveEngine) window.ArchiveEngine.setEnabled(m === 'wall');
