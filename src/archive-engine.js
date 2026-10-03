@@ -76,57 +76,77 @@ function shuffle(arr) {
   return arr;
 }
 
-/* Voisins d'une case sur le tore (gauche/droite/haut/bas, avec repli
-   sur le bord opposé) — utilisé pour ne jamais placer deux fois le
-   même projet sur deux cases qui se touchent. */
-function neighborsOf(idx) {
-  const r = Math.floor(idx / COLS), c = idx % COLS;
-  return [
-    r * COLS + mod(c - 1, COLS),
-    r * COLS + mod(c + 1, COLS),
-    mod(r - 1, ROWS) * COLS + c,
-    mod(r + 1, ROWS) * COLS + c,
-  ];
+/* Distance (en pas de case, horizontal + vertical) entre deux index de
+   grille sur le tore — repli pris en compte sur les deux axes, donc la
+   couture ne compte jamais comme "loin". */
+function gridDistance(idxA, idxB) {
+  const ar = Math.floor(idxA / COLS), ac = idxA % COLS;
+  const br = Math.floor(idxB / COLS), bc = idxB % COLS;
+  const dr = Math.min(Math.abs(ar - br), ROWS - Math.abs(ar - br));
+  const dc = Math.min(Math.abs(ac - bc), COLS - Math.abs(ac - bc));
+  return dr + dc;
 }
 
 /* Remplit les 63 cases avec les projets/médias correspondant au filtre,
-   répétés à parts égales et mélangés, sans jamais placer deux fois le
-   même projet sur deux cases voisines (gauche/droite/haut/bas, y compris
-   à la couture du tore) — ce qui évite les doublons côte à côte et les
-   vignettes "Bientôt" qui se regroupent au lieu de se répartir. */
+   répétés à parts égales et mélangés, en visant au moins 4 cases d'écart
+   entre deux occurrences du même projet. Avec peu de projets uniques
+   (la vidéo, ~7), 4 cases d'écart partout n'est pas mathématiquement
+   possible sur une grille de 63 cases : l'objectif redescend alors
+   automatiquement (3, 2, 1) jusqu'à trouver un arrangement qui tienne,
+   au lieu de laisser des doublons entassés comme avant. */
 function buildAssignment(items) {
-  const pool = [];
-  while (pool.length < TILE_COUNT) pool.push(...shuffle(items.slice()));
-  pool.length = TILE_COUNT;
-  shuffle(pool);
-  if (items.length < 2) return pool;
+  const basePool = [];
+  while (basePool.length < TILE_COUNT) basePool.push(...shuffle(items.slice()));
+  basePool.length = TILE_COUNT;
+  if (items.length < 2) return basePool;
 
-  const grid = pool.slice();
-  const conflicts = () => {
-    const bad = [];
+  function conflictsAt(grid, idx, minDist) {
     for (let i = 0; i < TILE_COUNT; i++) {
-      if (neighborsOf(i).some(j => j > i && grid[j] === grid[i])) bad.push(i);
+      if (i !== idx && grid[i] === grid[idx] && gridDistance(idx, i) < minDist) return true;
     }
-    return bad;
-  };
-
-  /* Un doublon voisin restant est réparé en l'échangeant avec une case
-     ailleurs sur la grille qui ne crée aucun nouveau conflit. Quelques
-     passages suffisent toujours sur une grille de cette taille. */
-  for (let pass = 0; pass < 6; pass++) {
-    const bad = conflicts();
-    if (!bad.length) break;
-    for (const i of bad) {
-      for (let j = 0; j < TILE_COUNT; j++) {
-        if (j === i || grid[j] === grid[i]) continue;
-        const iNeighbors = neighborsOf(i), jNeighbors = neighborsOf(j);
-        const iOk = iNeighbors.every(k => k === j || grid[k] !== grid[j]);
-        const jOk = jNeighbors.every(k => k === i || grid[k] !== grid[i]);
-        if (iOk && jOk) { const tmp = grid[i]; grid[i] = grid[j]; grid[j] = tmp; break; }
-      }
-    }
+    return false;
   }
-  return grid;
+  function countConflicts(grid, minDist) {
+    let n = 0;
+    for (let i = 0; i < TILE_COUNT; i++) if (conflictsAt(grid, i, minDist)) n++;
+    return n;
+  }
+  /* Répare par échanges locaux ; modifie grid sur place, renvoie le
+     nombre de conflits restants une fois les passages épuisés. */
+  function repair(grid, minDist) {
+    for (let pass = 0; pass < 8; pass++) {
+      let bad = 0;
+      for (let i = 0; i < TILE_COUNT; i++) {
+        if (!conflictsAt(grid, i, minDist)) continue;
+        let fixed = false;
+        for (let j = 0; j < TILE_COUNT; j++) {
+          if (j === i || grid[j] === grid[i]) continue;
+          const tmp = grid[i]; grid[i] = grid[j]; grid[j] = tmp;
+          if (!conflictsAt(grid, i, minDist) && !conflictsAt(grid, j, minDist)) { fixed = true; break; }
+          grid[j] = grid[i]; grid[i] = tmp; // annule, aucun gain
+        }
+        if (!fixed) bad++;
+      }
+      if (!bad) return 0;
+    }
+    return countConflicts(grid, minDist);
+  }
+
+  /* Plusieurs tirages de départ par palier : un échange local peut
+     rester bloqué selon l'ordre de mélange initial, alors qu'un autre
+     tirage atteint 0 conflit au même palier. On garde le meilleur. */
+  for (let target = 4; target >= 1; target--) {
+    let best = null, bestConflicts = Infinity;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const grid = shuffle(basePool.slice());
+      const left = repair(grid, target);
+      if (left < bestConflicts) { best = grid; bestConflicts = left; }
+      if (!left) break;
+    }
+    if (!bestConflicts) return best;
+    if (target === 1) return best; // dernier palier : on rend le meilleur essai trouvé
+  }
+  return basePool;
 }
 
 async function boot() {
