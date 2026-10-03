@@ -226,13 +226,20 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
   .panel,#wall,#listwrap{transition:none}
   .panel{transform:none}
 }
+/* En-tête des fiches : transparent + dégradé derrière, comme l'en-tête
+   principal du site (header.site + #wall::before) plutôt qu'un bandeau
+   plein flouté — un seul style d'en-tête partout. */
+.panel::before{
+  content:'';position:fixed;top:0;left:0;right:0;height:150px;z-index:4;
+  pointer-events:none;background:linear-gradient(to bottom,rgba(5,5,5,.92),rgba(5,5,5,0));
+}
 .phead{
   position:sticky;top:0;z-index:5;height:var(--head);
   display:flex;align-items:center;justify-content:space-between;gap:16px;
   padding:0 var(--gut);
-  background:rgba(5,5,5,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-  border-bottom:1px solid var(--line);
+  background:none;pointer-events:none;
 }
+.phead>*{pointer-events:auto}
 .phead .back{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);transition:color .18s}
 .phead .back:hover{color:var(--fg)}
 .phead .now{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);
@@ -242,7 +249,7 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
   text-transform:uppercase;font-weight:600;max-width:18ch}
 .pmeta{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px 22px}
 .stage-media{
-  margin-top:clamp(22px,4vh,38px);background:#0c0c0c;border:1px solid var(--line);
+  position:relative;margin-top:clamp(22px,4vh,38px);background:#0c0c0c;border:1px solid var(--line);
   min-height:min(50vh,400px);display:flex;align-items:center;justify-content:center;
 }
 .stage-media video{width:100%;max-height:78vh;object-fit:contain;background:#000}
@@ -250,16 +257,28 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
 
 /* Fiche photo : fond clair plutôt que le cadre sombre forcé en 16/9 des
    vidéos, qui écrasait les photos portrait entre deux bandes noires.
-   La photo s'affiche à sa taille naturelle, sans cadre. Revient au
-   thème sombre dès qu'on ouvre autre chose (voir open() / closeView()). */
+   La photo s'affiche à sa taille naturelle, sans cadre, centrée en
+   hauteur sans avoir besoin de scroller. Revient au thème sombre dès
+   qu'on ouvre autre chose (voir open() / closeView()). */
 .panel.photo-mode{background:#f2f1ec;color:#0b0b0a}
-.panel.photo-mode .phead{background:rgba(242,241,236,.92);border-bottom-color:rgba(11,11,10,.12)}
+.panel.photo-mode::before{background:linear-gradient(to bottom,rgba(242,241,236,.92),rgba(242,241,236,0))}
 .panel.photo-mode .phead .back,.panel.photo-mode .phead .now{color:rgba(11,11,10,.5)}
 .panel.photo-mode .phead .back:hover,.panel.photo-mode .phead .now:hover{color:#0b0b0a}
 .panel.photo-mode .label{color:rgba(11,11,10,.48)}
-.panel.photo-mode .stage-media{background:none;border:none;min-height:0;display:block}
-.panel.photo-mode .stage-media img{width:auto;max-width:100%;max-height:82vh;margin:0 auto;display:block;background:none}
-.panel.photo-mode .nextrow{border-top-color:rgba(11,11,10,.14)}
+.panel.photo-mode .pbody{
+  min-height:calc(100svh - var(--head));display:flex;flex-direction:column;justify-content:center;
+  padding-top:clamp(16px,3vh,32px);padding-bottom:clamp(16px,3vh,32px);
+}
+.panel.photo-mode .pbody h2{font-size:clamp(1.05rem,2.4vw,1.5rem);line-height:1.2;max-width:none}
+.panel.photo-mode .pmeta{margin-top:8px}
+.panel.photo-mode .stage-media{background:none;border:none;min-height:0;display:block;margin-top:clamp(14px,2.2vh,20px)}
+.panel.photo-mode .stage-media img{width:auto;max-width:100%;max-height:50vh;margin:0 auto;display:block;background:none}
+/* Zones invisibles pleine hauteur sur la moitié gauche/droite de la
+   photo : clic = projet précédent/suivant, sans ligne de navigation
+   visible (remplace .nextrow pour les photos, voir open()). */
+.photo-nav-zone{position:absolute;top:0;bottom:0;width:50%;background:none;border:none;cursor:pointer;z-index:2}
+.photo-nav-zone.left{left:0}
+.photo-nav-zone.right{right:0}
 
 /* Description et crédits */
 .pcols{
@@ -299,7 +318,9 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
 
 .nextrow{margin-top:clamp(44px,7vh,80px);padding-top:24px;border-top:1px solid var(--line);
   display:flex;align-items:flex-start;gap:16px}
+.nextrow[hidden]{display:none}
 .nextrow-side{display:flex;flex-direction:column;gap:6px;max-width:48%;text-align:left;transition:opacity .18s ease}
+.nextrow-side[hidden]{display:none}
 .nextrow-side:hover{opacity:.7}
 .nextrow-side.next{margin-left:auto;text-align:right;align-items:flex-end}
 .nextrow b{font-size:clamp(.95rem,2.3vw,1.45rem);text-transform:uppercase;font-weight:500;letter-spacing:-.01em}
@@ -952,12 +973,27 @@ function playOpenTransition(it){
 }
 
 function open(it){
-  playOpenTransition(it);
+  /* La transition « Photo/Vidéo » ne joue qu'en entrant dans une fiche
+     depuis l'extérieur (mur, liste) — pas en changeant de projet alors
+     qu'on est déjà dans une fiche (précédent/suivant, zones de clic),
+     sinon elle redeviendrait redondante à chaque navigation. */
+  if(!isOpen(view)) playOpenTransition(it);
   view.classList.toggle('photo-mode', it.kind === 'photo');
   vTitle.textContent = it.title;
   vNow.textContent   = it.title;
   vCat.textContent   = it.cat;
   vYear.textContent  = it.date || it.year || '';
+
+  /* Navigue parmi les projets de la même catégorie (photo avec photo,
+     vidéo avec vidéo), quel que soit le filtre affiché sur le mur —
+     ça se comporte comme une vraie galerie dédiée à chaque fois.
+     Calculé avant la vignette pour alimenter les zones de clic photo. */
+  var pool = ALL.filter(function(x){ return !x.soon && x.cat === it.cat; });
+  var idx  = pool.map(function(x){ return x.key; }).indexOf(it.key);
+  var nxt  = pool.length > 1 ? pool[mod(idx + 1, pool.length)] : null;
+  var prv  = pool.length > 1 ? pool[mod(idx - 1, pool.length)] : null;
+  if(nxt && nxt.key === it.key) nxt = null;
+  if(prv && (prv.key === it.key || prv.key === (nxt && nxt.key))) prv = null;
 
   vStage.innerHTML = '';
   if(it.kind === 'photo'){
@@ -965,6 +1001,22 @@ function open(it){
     img.src = imgUrl(it.src, 1800);
     img.alt = it.title + (it.tools ? ', ' + it.tools : '');
     vStage.appendChild(img);
+    /* Navigation par clic invisible sur la photo elle-même, plutôt
+       qu'une ligne « précédent / suivant » (voir plus bas). */
+    if(prv){
+      var zl = document.createElement('button');
+      zl.type = 'button'; zl.className = 'photo-nav-zone left';
+      zl.setAttribute('aria-label', 'Projet précédent : ' + prv.title);
+      zl.addEventListener('click', function(){ location.hash = prv.key; });
+      vStage.appendChild(zl);
+    }
+    if(nxt){
+      var zr = document.createElement('button');
+      zr.type = 'button'; zr.className = 'photo-nav-zone right';
+      zr.setAttribute('aria-label', 'Projet suivant : ' + nxt.title);
+      zr.addEventListener('click', function(){ location.hash = nxt.key; });
+      vStage.appendChild(zr);
+    }
   } else {
     var v = document.createElement('video');
     v.controls = true; v.playsInline = true; v.preload = 'metadata'; v.loop = true;
@@ -1045,24 +1097,23 @@ function open(it){
     vMore.hidden = true;
   }
 
-  /* Navigue parmi les projets de la même catégorie (photo avec photo,
-     vidéo avec vidéo), quel que soit le filtre affiché sur le mur —
-     ça se comporte comme une vraie galerie dédiée à chaque fois. */
-  var pool = ALL.filter(function(x){ return !x.soon && x.cat === it.cat; });
-  var idx  = pool.map(function(x){ return x.key; }).indexOf(it.key);
-  var nxt  = pool.length > 1 ? pool[mod(idx + 1, pool.length)] : null;
-  var prv  = pool.length > 1 ? pool[mod(idx - 1, pool.length)] : null;
-  if(nxt && nxt.key !== it.key){
-    vNext.hidden = false;
-    vNext.querySelector('b').textContent = nxt.title;
-    vNext.onclick = function(){ location.hash = nxt.key; };
-  } else { vNext.hidden = true; }
-  if(prv && prv.key !== it.key && prv.key !== (nxt && nxt.key)){
-    vPrev.hidden = false;
-    vPrev.querySelector('b').textContent = prv.title;
-    vPrev.onclick = function(){ location.hash = prv.key; };
-  } else { vPrev.hidden = true; }
-  vNextR.hidden = vNext.hidden && vPrev.hidden;
+  /* Ligne « précédent / suivant » : seulement pour les vidéos — les
+     photos naviguent par clic invisible sur l'image (voir plus haut). */
+  if(it.kind === 'photo'){
+    vNext.hidden = true; vPrev.hidden = true; vNextR.hidden = true;
+  } else {
+    if(nxt){
+      vNext.hidden = false;
+      vNext.querySelector('b').textContent = nxt.title;
+      vNext.onclick = function(){ location.hash = nxt.key; };
+    } else { vNext.hidden = true; }
+    if(prv){
+      vPrev.hidden = false;
+      vPrev.querySelector('b').textContent = prv.title;
+      vPrev.onclick = function(){ location.hash = prv.key; };
+    } else { vPrev.hidden = true; }
+    vNextR.hidden = vNext.hidden && vPrev.hidden;
+  }
 
   closePanel(infoV);
   openPanel(view);
