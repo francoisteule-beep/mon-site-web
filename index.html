@@ -265,14 +265,32 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
 .panel.photo-mode .phead .back,.panel.photo-mode .phead .now{color:rgba(11,11,10,.5)}
 .panel.photo-mode .phead .back:hover,.panel.photo-mode .phead .now:hover{color:#0b0b0a}
 .panel.photo-mode .label{color:rgba(11,11,10,.48)}
+/* Titre + méta : simple conteneur neutre en vidéo (display:contents,
+   aucun effet sur la mise en page), colonne de gauche en photo. */
+.photo-info{display:contents}
 .panel.photo-mode .pbody{
-  min-height:calc(100svh - var(--head));display:flex;flex-direction:column;justify-content:center;
+  min-height:calc(100svh - var(--head));max-width:none;
+  display:flex;flex-direction:row;align-items:center;
+  gap:clamp(28px,5vw,64px);
   padding-top:clamp(16px,3vh,32px);padding-bottom:clamp(16px,3vh,32px);
 }
-.panel.photo-mode .pbody h2{font-size:clamp(1.05rem,2.4vw,1.5rem);line-height:1.2;max-width:none}
-.panel.photo-mode .pmeta{margin-top:8px}
-.panel.photo-mode .stage-media{background:none;border:none;min-height:0;display:block;margin-top:clamp(14px,2.2vh,20px)}
-.panel.photo-mode .stage-media img{width:auto;max-width:100%;max-height:50vh;margin:0 auto;display:block;background:none}
+.panel.photo-mode .photo-info{
+  display:flex;flex-direction:column;justify-content:center;
+  flex:0 0 auto;max-width:min(380px,34vw);
+}
+.panel.photo-mode .pbody h2{font-size:clamp(1.1rem,2vw,1.6rem);line-height:1.25;max-width:none}
+.panel.photo-mode .pmeta{margin-top:10px}
+.panel.photo-mode .stage-media{
+  background:none;border:none;min-height:0;
+  flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:flex-end;
+}
+.panel.photo-mode .stage-media img{width:auto;max-width:100%;max-height:80vh;margin:0;display:block;background:none}
+@media (max-width:820px){
+  .panel.photo-mode .pbody{flex-direction:column;justify-content:center;gap:clamp(14px,2.5vh,22px)}
+  .panel.photo-mode .photo-info{max-width:none;flex:0 0 auto}
+  .panel.photo-mode .stage-media{justify-content:center;width:100%}
+  .panel.photo-mode .stage-media img{max-height:55vh;margin:0 auto}
+}
 /* Zones invisibles pleine hauteur sur la moitié gauche/droite de la
    photo : clic = projet précédent/suivant, sans ligne de navigation
    visible (remplace .nextrow pour les photos, voir open()). */
@@ -286,6 +304,7 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
   display:grid;gap:clamp(28px,4vw,64px);grid-template-columns:1fr;
   align-items:start;
 }
+.pcols[hidden]{display:none}
 @media (min-width:900px){.pcols{grid-template-columns:1.35fr 1fr}}
 .pcols h3{font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:18px}
 .ptext{
@@ -437,8 +456,10 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
     <span class="now" id="v-now"></span>
   </div>
   <div class="pbody">
-    <h2 id="v-title"></h2>
-    <div class="pmeta"><span class="label" id="v-cat"></span><span class="label" id="v-year"></span></div>
+    <div class="photo-info">
+      <h2 id="v-title"></h2>
+      <div class="pmeta"><span class="label" id="v-cat"></span><span class="label" id="v-year"></span></div>
+    </div>
     <div class="stage-media" id="v-stage"></div>
 
     <div class="pcols" id="v-about" hidden>
