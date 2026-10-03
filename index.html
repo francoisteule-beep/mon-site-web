@@ -164,6 +164,14 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
   padding:calc(var(--head) + 26px) var(--gut) calc(var(--foot) + 40px);
 }
 #listwrap.off{opacity:0}
+/* Le header et le pied sont transparents (voir plus haut) : sans ce
+   dégradé, les lignes de la liste passent dessous en restant pleinement
+   opaques au scroll et deviennent illisibles. Même principe que
+   #wall::before/::after sur le mur. */
+#listwrap::before,#listwrap::after{content:'';position:fixed;left:0;right:0;pointer-events:none;z-index:55}
+#listwrap::before{top:0;height:150px;background:linear-gradient(to bottom,rgba(5,5,5,.92),rgba(5,5,5,0))}
+#listwrap::after{bottom:0;height:190px;background:linear-gradient(to top,rgba(5,5,5,.94),rgba(5,5,5,0))}
+#listwrap.off::before,#listwrap.off::after{display:none}
 .lintro{padding:clamp(10px,4vh,44px) 0 clamp(26px,5vh,50px);border-bottom:1px solid var(--line)}
 .lintro h1{font-size:clamp(1.6rem,5vw,3.4rem);line-height:1.04;letter-spacing:-.02em;
   text-transform:uppercase;font-weight:600;max-width:16ch}
@@ -277,22 +285,35 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
   .mcell:hover::after{opacity:0}}
 
 .nextrow{margin-top:clamp(44px,7vh,80px);padding-top:24px;border-top:1px solid var(--line);
-  display:flex;justify-content:space-between;align-items:center;gap:16px}
+  display:flex;align-items:flex-start;gap:16px}
+.nextrow-side{display:flex;flex-direction:column;gap:6px;max-width:48%;text-align:left;transition:opacity .18s ease}
+.nextrow-side:hover{opacity:.7}
+.nextrow-side.next{margin-left:auto;text-align:right;align-items:flex-end}
 .nextrow b{font-size:clamp(.95rem,2.3vw,1.45rem);text-transform:uppercase;font-weight:500;letter-spacing:-.01em}
 
-/* Infos — même composition que la première version */
+/* Infos — accroche + reel puis colonnes, inspiré de la structure de
+   forms.world/about (grande phrase + vidéo, puis localisation/contacts,
+   puis clients), adapté à un studio d'une seule personne. */
 .info-body{padding-top:clamp(40px,9vh,90px)}
-.ifoot{margin-top:clamp(50px,9vh,100px);padding-top:24px;border-top:1px solid var(--line);
-  display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between}
-.igrid{display:grid;gap:clamp(30px,5vw,70px);grid-template-columns:1fr}
-@media (min-width:900px){.igrid{grid-template-columns:1.1fr 1fr}}
-.igrid h3{font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:20px}
-.bio{font-size:clamp(1rem,2.1vw,1.35rem);line-height:1.45;max-width:34ch;font-weight:400}
-.ilinks{list-style:none;margin-top:26px;display:flex;flex-direction:column;gap:10px}
+.i-hero{display:grid;gap:clamp(28px,4vh,44px);grid-template-columns:1fr;align-items:center}
+@media (min-width:900px){.i-hero{grid-template-columns:1.15fr 1fr;gap:clamp(30px,4vw,64px)}}
+.i-heading{font-size:clamp(1.7rem,4.6vw,2.9rem);line-height:1.1;letter-spacing:-.02em;
+  text-transform:uppercase;font-weight:600;max-width:20ch}
+.i-sub{margin-top:18px;font-size:clamp(.92rem,1.6vw,1.05rem);line-height:1.6;
+  color:var(--dim);max-width:48ch;font-weight:400}
+.i-reel{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;
+  background:#0c0c0c;border:1px solid var(--line)}
+.i-meta{margin-top:clamp(44px,7vh,80px);display:flex;flex-wrap:wrap;gap:clamp(30px,5vw,70px)}
+.info-body .label{display:block;margin-bottom:14px}
+.i-meta .val{font-size:.8rem;letter-spacing:.02em;color:rgba(255,255,255,.92)}
+.ilinks{list-style:none;display:flex;flex-direction:column;gap:10px}
 .ilinks a{font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;
   border-bottom:1px solid var(--faint);padding-bottom:3px;display:inline-block;transition:border-color .18s}
 .ilinks a:hover{border-color:var(--fg)}
-.logos{display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:24px 18px;align-items:center}
+.i-clients{margin-top:clamp(50px,8vh,90px)}
+.ifoot{margin-top:clamp(50px,9vh,100px);padding-top:24px;border-top:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between}
+.logos{display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:24px 18px;align-items:center;margin-top:20px}
 .logos img{width:100%;height:28px;object-fit:contain;object-position:left center;
   filter:brightness(0) invert(1);opacity:.45;transition:opacity .22s}
 .logos img:hover{opacity:1}
@@ -387,8 +408,14 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
       <div class="mgrid" id="v-mgrid"></div>
     </div>
     <div class="nextrow" id="v-nextrow" hidden>
-      <span class="label">Projet suivant</span>
-      <button id="v-next"><b></b></button>
+      <button class="nextrow-side prev" id="v-prev" hidden>
+        <span class="label">← Précédent</span>
+        <b></b>
+      </button>
+      <button class="nextrow-side next" id="v-next" hidden>
+        <span class="label">Projet suivant →</span>
+        <b></b>
+      </button>
     </div>
   </div>
 </div>
@@ -400,20 +427,31 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
     <span class="now">Infos</span>
   </div>
   <div class="pbody info-body">
-    <div class="igrid">
+    <div class="i-hero">
       <div>
-        <h3 id="i-title">Infos</h3>
-        <p class="bio">Directeur artistique et designer basé à Paris. Je travaille l’image de la direction artistique au montage final : identité, design graphique, motion 2D et 3D, production audiovisuelle.</p>
+        <h1 class="i-heading" id="i-title">Frantz — direction artistique et design, du concept au montage final.</h1>
+        <p class="i-sub">Basé à Paris. Identité, design graphique, motion 2D et 3D, production audiovisuelle — je porte l'image d'un projet de la direction artistique jusqu'à sa dernière image.</p>
+      </div>
+      <video class="i-reel" autoplay loop muted playsinline preload="metadata" aria-hidden="true"
+        src="https://assets.frantzimann.org/videos/1788701395235-vlast-trafic-locaux.mp4"></video>
+    </div>
+    <div class="i-meta">
+      <div>
+        <span class="label">Localisation</span>
+        <span class="val">Paris, France</span>
+      </div>
+      <div>
+        <span class="label">Contacts</span>
         <ul class="ilinks">
           <li><a href="mailto:contact.frantz75@gmail.com">contact.frantz75@gmail.com</a></li>
           <li><a href="https://www.linkedin.com/in/fran%C3%A7ois-teul%C3%A9/" target="_blank" rel="noopener">LinkedIn</a></li>
           <li><a href="https://www.instagram.com/_fran.tl/" target="_blank" rel="noopener">Instagram</a></li>
         </ul>
       </div>
-      <div>
-        <h3>Clients</h3>
-        <div class="logos" id="logos"></div>
-      </div>
+    </div>
+    <div class="i-clients">
+      <span class="label">Clients</span>
+      <div class="logos" id="logos"></div>
     </div>
     <div class="ifoot">
       <span class="label">Frantz — Paris</span>
@@ -479,6 +517,7 @@ function closePanel(el, after){
     if(after) after();
   }, reduced ? 0 : FADE);
 }
+
 function yearOf(s){ var m = String(s || '').match(/(19|20)\d{2}/); return m ? m[0] : ''; }
 function mod(n, m){ return ((n % m) + m) % m; }
 
@@ -837,6 +876,7 @@ var vMore  = document.getElementById('v-more');
 var vSub   = document.getElementById('v-subcount');
 var vMGrid = document.getElementById('v-mgrid');
 var vNextR = document.getElementById('v-nextrow');
+var vPrev  = document.getElementById('v-prev');
 var vNext  = document.getElementById('v-next');
 var moreObs = null;
 
@@ -932,14 +972,24 @@ function open(it){
     vMore.hidden = true;
   }
 
-  var pool = ITEMS.filter(function(x){ return !x.soon; });
+  /* Navigue parmi les projets de la même catégorie (photo avec photo,
+     vidéo avec vidéo), quel que soit le filtre affiché sur le mur —
+     ça se comporte comme une vraie galerie dédiée à chaque fois. */
+  var pool = ALL.filter(function(x){ return !x.soon && x.cat === it.cat; });
   var idx  = pool.map(function(x){ return x.key; }).indexOf(it.key);
   var nxt  = pool.length > 1 ? pool[mod(idx + 1, pool.length)] : null;
+  var prv  = pool.length > 1 ? pool[mod(idx - 1, pool.length)] : null;
   if(nxt && nxt.key !== it.key){
-    vNextR.hidden = false;
+    vNext.hidden = false;
     vNext.querySelector('b').textContent = nxt.title;
     vNext.onclick = function(){ location.hash = nxt.key; };
-  } else { vNextR.hidden = true; }
+  } else { vNext.hidden = true; }
+  if(prv && prv.key !== it.key && prv.key !== (nxt && nxt.key)){
+    vPrev.hidden = false;
+    vPrev.querySelector('b').textContent = prv.title;
+    vPrev.onclick = function(){ location.hash = prv.key; };
+  } else { vPrev.hidden = true; }
+  vNextR.hidden = vNext.hidden && vPrev.hidden;
 
   closePanel(infoV);
   openPanel(view);
@@ -1005,6 +1055,13 @@ document.addEventListener('keydown', function(e){
   if(e.key !== 'Escape') return;
   if(isOpen(zoomEl)){ closeZoom(); return; }
   if(isOpen(view) || isOpen(infoV)) backHome();
+});
+/* Flèches gauche/droite : projet précédent/suivant de la même catégorie,
+   uniquement quand la fiche projet est ouverte (pas en coulisses/zoom). */
+document.addEventListener('keydown', function(e){
+  if(!isOpen(view) || isOpen(zoomEl)) return;
+  if(e.key === 'ArrowRight' && !vNext.hidden){ e.preventDefault(); vNext.click(); }
+  else if(e.key === 'ArrowLeft' && !vPrev.hidden){ e.preventDefault(); vPrev.click(); }
 });
 
 boot();
