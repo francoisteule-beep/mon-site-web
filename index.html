@@ -1102,7 +1102,7 @@ function open(it){
       nv ? (nv + (nv > 1 ? ' vidéos' : ' vidéo')) : ''
     ].filter(Boolean).join(' · ');
 
-    list.forEach(function(m){
+    list.forEach(function(m, idx){
       var cell = document.createElement('button');
       cell.className = 'mcell';
       cell.setAttribute('aria-label', m.type === 'video' ? 'Agrandir la vidéo' : 'Agrandir l’image');
@@ -1120,7 +1120,7 @@ function open(it){
         node.dataset.src = imgUrl(m.src, 900);
         cell.appendChild(node);
       }
-      cell.addEventListener('click', function(){ zoom(m); });
+      cell.addEventListener('click', function(){ zoom(list, idx); });
       vMGrid.appendChild(cell);
     });
 
@@ -1176,7 +1176,11 @@ function closeView(){
 
 /* ── loupe ── */
 var zoomEl = document.getElementById('zoom'), zSlot = document.getElementById('z-slot');
-function zoom(m){
+var zoomList = [], zoomIdx = 0;
+/* Clic sur le média affiché = image/vidéo suivante de la série, en
+   boucle. On ne sort plus qu'avec le bouton Fermer (voir closeZoom). */
+function renderZoom(){
+  var m = zoomList[zoomIdx];
   zSlot.innerHTML = '';
   var n;
   if(m.type === 'video'){
@@ -1186,13 +1190,24 @@ function zoom(m){
   } else {
     n = document.createElement('img'); n.alt = ''; n.src = imgUrl(m.src, 1800);
   }
+  if(zoomList.length > 1){
+    n.style.cursor = 'pointer';
+    n.addEventListener('click', function(e){
+      e.stopPropagation();
+      zoomIdx = mod(zoomIdx + 1, zoomList.length);
+      renderZoom();
+    });
+  }
   zSlot.appendChild(n);
+}
+function zoom(list, idx){
+  zoomList = list; zoomIdx = idx;
+  renderZoom();
   openPanel(zoomEl);
   document.getElementById('z-close').focus();
 }
-function closeZoom(){ closePanel(zoomEl, function(){ zSlot.innerHTML = ''; }); }
+function closeZoom(){ closePanel(zoomEl, function(){ zSlot.innerHTML = ''; zoomList = []; }); }
 document.getElementById('z-close').addEventListener('click', closeZoom);
-zoomEl.addEventListener('click', function(e){ if(e.target === zoomEl) closeZoom(); });
 
 /* ══════════════════════════════════════════════
    ROUTAGE
