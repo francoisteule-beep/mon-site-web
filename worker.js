@@ -144,15 +144,18 @@ export default {
                     const { results } = await env.portfolio_db
                         .prepare("SELECT * FROM media ORDER BY sort_order ASC, id ASC")
                         .all();
+                    results.forEach(m => {
+                        try { m.more = JSON.parse(m.more_urls || "[]"); } catch { m.more = []; }
+                    });
                     return json(results);
                 }
 
                 if (method === "POST") {
-                    const { name, date, tools, url } = await request.json();
+                    const { name, date, tools, url, description = "", more = [] } = await request.json();
                     if (!name || !url) return json({ error: "name et url requis" }, 400);
                     await env.portfolio_db
-                        .prepare("INSERT INTO media (name, date, tools, url) VALUES (?, ?, ?, ?)")
-                        .bind(name, date || "", tools || "", url)
+                        .prepare("INSERT INTO media (name, date, tools, url, description, more_urls) VALUES (?, ?, ?, ?, ?, ?)")
+                        .bind(name, date || "", tools || "", url, description || "", JSON.stringify(more || []))
                         .run();
                     return json({ success: true });
                 }
@@ -172,10 +175,10 @@ export default {
             // PUT /media/:id
             if (path.match(/^\/media\/\d+$/) && method === "PUT") {
                 const id = path.split("/")[2];
-                const { name, date, tools, url } = await request.json();
+                const { name, date, tools, url, description = "", more = [] } = await request.json();
                 await env.portfolio_db
-                    .prepare("UPDATE media SET name=?, date=?, tools=?, url=? WHERE id=?")
-                    .bind(name, date || "", tools || "", url, id)
+                    .prepare("UPDATE media SET name=?, date=?, tools=?, url=?, description=?, more_urls=? WHERE id=?")
+                    .bind(name, date || "", tools || "", url, description || "", JSON.stringify(more || []), id)
                     .run();
                 return json({ success: true });
             }

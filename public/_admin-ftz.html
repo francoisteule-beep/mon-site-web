@@ -497,7 +497,11 @@ body {
                     <input class="form-input" id="media-tools" type="text" placeholder="Midjourney · Magnific AI">
                 </div>
                 <div class="form-group full">
-                    <label class="form-label">Fichier image (upload vers R2)</label>
+                    <label class="form-label">Description — type de photo, contexte du shoot</label>
+                    <textarea class="form-textarea" id="media-description" rows="4" placeholder="Série de portraits en studio, lumière naturelle…"></textarea>
+                </div>
+                <div class="form-group full">
+                    <label class="form-label">Image de couverture (upload vers R2)</label>
                     <div class="form-file-area">
                         <div class="form-file-label" id="media-file-label">Glisser ou cliquer (.jpg, .webp, .png)</div>
                         <input type="file" id="media-img-file" accept="image/*">
@@ -506,6 +510,21 @@ body {
                 <div class="form-group full">
                     <label class="form-label">— ou — URL image existante</label>
                     <input class="form-input" id="media-img-url" type="url" placeholder="https://...">
+                </div>
+                <div class="form-group full">
+                    <label class="form-label">Images supplémentaires — glisser pour réordonner</label>
+                    <div class="more-list" id="media-more-list"></div>
+                    <div class="more-add-row">
+                        <input class="form-input" id="media-more-url" type="url" placeholder="https://image-supplementaire.jpg">
+                        <button class="btn-small" id="btn-add-media-more">+ URL</button>
+                    </div>
+                    <div class="form-file-area" id="media-more-upload-area" style="margin-top:8px">
+                        <div class="form-file-label" id="media-more-file-label">Ou glisser / cliquer un fichier (.jpg, .webp, .png)</div>
+                        <input type="file" id="media-more-file" accept="image/*">
+                        <div class="upload-progress" id="media-more-upload-progress">
+                            <div class="upload-progress-bar" id="media-more-upload-bar"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-actions">
                     <button class="btn-primary" id="btn-add-media">AJOUTER LA PHOTO</button>
@@ -879,6 +898,97 @@ document.getElementById('proj-more-file').addEventListener('change', async funct
 });
 
 // ══════════════════════════════════════════════
+//  PHOTOS SUPPLÉMENTAIRES D'UN PROJET PHOTO
+// ══════════════════════════════════════════════
+let editingMediaMore = []; // [{type:'img', src}, ...]
+
+function renderMediaMoreList() {
+    const list = document.getElementById('media-more-list');
+    list.innerHTML = '';
+    if (!editingMediaMore.length) {
+        list.innerHTML = '<div style="font-size:.48rem;letter-spacing:2px;color:var(--muted);padding:10px 0">Aucune image supplémentaire — ajoutez-en ci-dessous</div>';
+        return;
+    }
+    editingMediaMore.forEach((item, idx) => {
+        const el = document.createElement('div');
+        el.className = 'more-item';
+        el.draggable = true;
+        el.dataset.idx = idx;
+        el.innerHTML = `
+            <div class="drag-handle">⠿</div>
+            <img class="more-thumb" src="${item.src}" loading="lazy">
+            <span class="more-type">IMG</span>
+            <span class="more-url" title="${item.src}">${item.src}</span>
+            <button class="more-del" data-idx="${idx}">×</button>`;
+        el.querySelector('.more-del').addEventListener('click', () => {
+            editingMediaMore.splice(idx, 1);
+            renderMediaMoreList();
+        });
+        el.addEventListener('dragstart', e => {
+            e.dataTransfer.effectAllowed = 'move';
+            el.classList.add('dragging');
+            list._draggingMore = el;
+        });
+        el.addEventListener('dragend', () => {
+            el.classList.remove('dragging');
+            list.querySelectorAll('.more-item').forEach(r => r.classList.remove('drag-over'));
+            editingMediaMore = [...list.querySelectorAll('.more-item[data-idx]')].map(r => {
+                return editingMediaMore[parseInt(r.dataset.idx)];
+            }).filter(Boolean);
+            renderMediaMoreList();
+        });
+        el.addEventListener('dragover', e => {
+            e.preventDefault();
+            if (list._draggingMore && list._draggingMore !== el) {
+                list.querySelectorAll('.more-item').forEach(r => r.classList.remove('drag-over'));
+                el.classList.add('drag-over');
+                const items = [...list.querySelectorAll('.more-item')];
+                const fromIdx = items.indexOf(list._draggingMore);
+                const toIdx   = items.indexOf(el);
+                if (fromIdx < toIdx) el.after(list._draggingMore);
+                else el.before(list._draggingMore);
+            }
+        });
+        list.appendChild(el);
+    });
+}
+
+document.getElementById('btn-add-media-more').addEventListener('click', () => {
+    const url = document.getElementById('media-more-url').value.trim();
+    if (!url) return;
+    editingMediaMore.push({ type: 'img', src: url });
+    document.getElementById('media-more-url').value = '';
+    renderMediaMoreList();
+});
+
+document.getElementById('media-more-file').addEventListener('change', async function () {
+    const file = this.files[0];
+    if (!file) return;
+    const label    = document.getElementById('media-more-file-label');
+    const bar      = document.getElementById('media-more-upload-bar');
+    const progress = document.getElementById('media-more-upload-progress');
+    label.textContent = 'Upload en cours…';
+    progress.style.display = 'block';
+    try {
+        const url = await uploadFile(file, 'photos', bar);
+        editingMediaMore.push({ type: 'img', src: url });
+        renderMediaMoreList();
+        label.textContent = '✓ ' + file.name + ' ajouté';
+        label.classList.add('file-chosen');
+        this.value = '';
+        setTimeout(() => {
+            label.textContent = 'Ou glisser / cliquer un fichier (.jpg, .webp, .png)';
+            label.classList.remove('file-chosen');
+            progress.style.display = 'none';
+            bar.style.width = '0%';
+        }, 2500);
+    } catch(e) {
+        label.textContent = 'Erreur : ' + e.message;
+        progress.style.display = 'none';
+    }
+});
+
+// ══════════════════════════════════════════════
 //  MINIATURE DU PROJET
 // ══════════════════════════════════════════════
 function showThumbPreview(url) {
@@ -1153,10 +1263,15 @@ let editingMediaId = null;
 function startEditMedia(m) {
     editingMediaId = m.id;
     document.getElementById('media-form-title').textContent = 'MODIFIER — ' + m.name;
-    document.getElementById('media-name').value    = m.name  || '';
-    document.getElementById('media-date').value    = m.date  || '';
-    document.getElementById('media-tools').value   = m.tools || '';
-    document.getElementById('media-img-url').value = m.url   || '';
+    document.getElementById('media-name').value        = m.name  || '';
+    document.getElementById('media-date').value        = m.date  || '';
+    document.getElementById('media-tools').value       = m.tools || '';
+    document.getElementById('media-description').value = m.description || '';
+    document.getElementById('media-img-url').value     = m.url   || '';
+    let mm = m.more;
+    if (!Array.isArray(mm)) { try { mm = JSON.parse(mm || '[]'); } catch { mm = []; } }
+    editingMediaMore = (mm || []).map(x => ({ ...x }));
+    renderMediaMoreList();
     document.getElementById('btn-add-media').textContent = 'METTRE À JOUR';
     document.getElementById('btn-cancel-media').style.display = 'inline-block';
     document.getElementById('form-media').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1164,15 +1279,17 @@ function startEditMedia(m) {
 
 function resetMediaForm() {
     editingMediaId = null;
+    editingMediaMore = [];
     document.getElementById('media-form-title').textContent   = 'NOUVELLE PHOTO';
     document.getElementById('btn-add-media').textContent      = 'AJOUTER LA PHOTO';
     document.getElementById('btn-cancel-media').style.display = 'none';
-    ['media-name','media-date','media-tools','media-img-url'].forEach(id => {
+    ['media-name','media-date','media-tools','media-description','media-img-url'].forEach(id => {
         document.getElementById(id).value = '';
     });
     document.getElementById('media-img-file').value = '';
     document.getElementById('media-file-label').textContent = 'Glisser ou cliquer (.jpg, .webp, .png)';
     document.getElementById('media-file-label').classList.remove('file-chosen');
+    renderMediaMoreList();
 }
 
 document.getElementById('btn-cancel-media').addEventListener('click', resetMediaForm);
@@ -1181,6 +1298,7 @@ document.getElementById('btn-add-media').addEventListener('click', async () => {
     const name     = document.getElementById('media-name').value.trim();
     const date     = document.getElementById('media-date').value.trim();
     const tools    = document.getElementById('media-tools').value.trim();
+    const descr    = document.getElementById('media-description').value.trim();
     const file     = document.getElementById('media-img-file').files[0];
     let   imgUrl   = document.getElementById('media-img-url').value.trim();
     const statusEl = document.getElementById('media-status-msg');
@@ -1195,10 +1313,10 @@ document.getElementById('btn-add-media').addEventListener('click', async () => {
     try {
         if (file) imgUrl = await uploadFile(file, 'photos', null);
         if (editingMediaId) {
-            await api('PUT', '/media/' + editingMediaId, { name, date, tools, url: imgUrl });
+            await api('PUT', '/media/' + editingMediaId, { name, date, tools, url: imgUrl, description: descr, more: editingMediaMore });
             setStatus(statusEl, 'Photo mise à jour !', 'ok');
         } else {
-            await api('POST', '/media', { name, date, tools, url: imgUrl });
+            await api('POST', '/media', { name, date, tools, url: imgUrl, description: descr, more: editingMediaMore });
             setStatus(statusEl, 'Photo ajoutée !', 'ok');
         }
         resetMediaForm();
