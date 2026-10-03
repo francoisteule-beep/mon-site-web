@@ -265,11 +265,19 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
 .panel.photo-mode .phead .back,.panel.photo-mode .phead .now{color:rgba(11,11,10,.5)}
 .panel.photo-mode .phead .back:hover,.panel.photo-mode .phead .now:hover{color:#0b0b0a}
 .panel.photo-mode .label{color:rgba(11,11,10,.48)}
-/* Titre + méta : simple conteneur neutre en vidéo (display:contents,
-   aucun effet sur la mise en page), colonne de gauche en photo. */
+.panel.photo-mode .pcols h3{color:rgba(11,11,10,.5)}
+.panel.photo-mode .ptext{color:rgba(11,11,10,.85)}
+/* Titre + méta, et le bloc titre+photo : simples conteneurs neutres en
+   vidéo (display:contents, aucun effet sur la mise en page), colonne
+   de gauche / rangée centrée en photo. .photo-hero porte le centrage
+   plein écran, pas .pbody : s'il y a une série en dessous (#v-more),
+   .pbody peut dépasser la hauteur de l'écran et scroller normalement,
+   alors que le héros lui-même reste toujours centré sans scroll. */
 .photo-info{display:contents}
-.panel.photo-mode .pbody{
-  min-height:calc(100svh - var(--head));max-width:none;
+.photo-hero{display:contents}
+.panel.photo-mode .pbody{max-width:none;padding-top:0;padding-bottom:0}
+.panel.photo-mode .photo-hero{
+  min-height:calc(100svh - var(--head));
   display:flex;flex-direction:row;align-items:center;
   gap:clamp(28px,5vw,64px);
   padding-top:clamp(16px,3vh,32px);padding-bottom:clamp(16px,3vh,32px);
@@ -285,8 +293,12 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
   flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:flex-end;
 }
 .panel.photo-mode .stage-media img{width:auto;max-width:100%;max-height:80vh;margin:0;display:block;background:none}
+/* Série de photos du même projet, sous le héros — on y accède en
+   scrollant, comme la demande le précise explicitement. */
+.panel.photo-mode .more h3,.panel.photo-mode .more .sub{color:rgba(11,11,10,.5)}
+.panel.photo-mode .mcell{background:#e7e5df;border-color:rgba(11,11,10,.14)}
 @media (max-width:820px){
-  .panel.photo-mode .pbody{flex-direction:column;justify-content:center;gap:clamp(14px,2.5vh,22px)}
+  .panel.photo-mode .photo-hero{flex-direction:column;justify-content:center;gap:clamp(14px,2.5vh,22px)}
   .panel.photo-mode .photo-info{max-width:none;flex:0 0 auto}
   .panel.photo-mode .stage-media{justify-content:center;width:100%}
   .panel.photo-mode .stage-media img{max-height:55vh;margin:0 auto}
@@ -456,11 +468,13 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
     <span class="now" id="v-now"></span>
   </div>
   <div class="pbody">
-    <div class="photo-info">
-      <h2 id="v-title"></h2>
-      <div class="pmeta"><span class="label" id="v-cat"></span><span class="label" id="v-year"></span></div>
+    <div class="photo-hero">
+      <div class="photo-info">
+        <h2 id="v-title"></h2>
+        <div class="pmeta"><span class="label" id="v-cat"></span><span class="label" id="v-year"></span></div>
+      </div>
+      <div class="stage-media" id="v-stage"></div>
     </div>
-    <div class="stage-media" id="v-stage"></div>
 
     <div class="pcols" id="v-about" hidden>
       <div class="pdesc" id="v-desc-wrap" hidden>
@@ -474,7 +488,7 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
     </div>
 
     <div class="more" id="v-more" hidden>
-      <h3>En coulisses</h3>
+      <h3 id="v-more-title">En coulisses</h3>
       <div class="sub" id="v-subcount"></div>
       <div class="mgrid" id="v-mgrid"></div>
     </div>
@@ -749,13 +763,20 @@ function boot(){
     });
 
     media.forEach(function(m){
+      var more = m.more;
+      if(!Array.isArray(more)){
+        try{ more = JSON.parse(m.more_urls || '[]'); }catch(e){ more = []; }
+      }
+      more = (more || []).filter(function(x){ return x && x.src; }).map(function(x){
+        return { type:'img', src: x.src };
+      });
       ALL.push({
         key:'photo-' + m.id, kind:'photo', cat:'Photo',
         title: m.name || 'Sans titre',
         year: yearOf(m.date) || (m.date || ''),
         date: m.date || '', tools: m.tools || '',
-        src: m.url || '', thumb: '', desc: '', credits: [],
-        more: [], soon: false
+        src: m.url || '', thumb: '', desc: m.description || '', credits: [],
+        more: more, soon: false
       });
     });
 
@@ -1067,7 +1088,8 @@ function open(it){
 
   about.hidden = (dWrap.hidden && cWrap.hidden);
 
-  /* ── EN COULISSES : images ET vidéos ── */
+  /* ── EN COULISSES (vidéo) / SUITE DE LA SÉRIE (photo) ── */
+  document.getElementById('v-more-title').textContent = it.kind === 'photo' ? 'La série' : 'En coulisses';
   vMGrid.innerHTML = '';
   if(moreObs) moreObs.disconnect();
   var list = it.more || [];
