@@ -350,6 +350,22 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
 #boot{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center}
 #boot[hidden]{display:none}
 #boot span{font-size:.58rem;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.3)}
+
+/* Transition à l'ouverture d'une fiche : le nom de la catégorie se
+   révèle de gauche à droite, reste affiché, puis s'efface en fondu
+   pour laisser voir le projet — voir playOpenTransition(). */
+#open-transition{
+  position:fixed;inset:0;z-index:300;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;pointer-events:none;
+}
+#open-transition[hidden]{display:none}
+#open-transition.photo{background:#f2f1ec}
+#open-transition span{
+  font-size:clamp(1.6rem,6vw,4rem);letter-spacing:.14em;text-transform:uppercase;
+  font-weight:600;color:var(--fg);display:inline-block;
+}
+#open-transition.photo span{color:#0b0b0a}
+@media (prefers-reduced-motion:reduce){ #open-transition{display:none !important} }
 </style>
 </head>
 <body>
@@ -478,6 +494,7 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
 <div id="zoom" hidden><button class="close" id="z-close">Fermer ✕</button><div id="z-slot"></div></div>
 
 <div id="boot"><span>Chargement</span></div>
+<div id="open-transition" aria-hidden="true"><span id="open-transition-text"></span></div>
 
 <script>
 (function(){
@@ -893,7 +910,49 @@ var vPrev  = document.getElementById('v-prev');
 var vNext  = document.getElementById('v-next');
 var moreObs = null;
 
+/* Transition à l'ouverture d'une fiche : révèle le mot de catégorie de
+   gauche à droite (clip-path), le garde affiché, puis l'efface en
+   fondu pour laisser apparaître le projet (déjà prêt en dessous). */
+var openTransitionEl  = document.getElementById('open-transition');
+var openTransitionTxt = document.getElementById('open-transition-text');
+var openTransitionTimer = null;
+function playOpenTransition(it){
+  if(reduced) return;
+  /* Une animation Web Animations avec fill:'forwards' continue à imposer
+     son état final tant qu'elle n'est pas annulée — sans ça, la 2e
+     ouverture resterait bloquée sur l'opacité 0 de la précédente. */
+  if(openTransitionTimer){ clearTimeout(openTransitionTimer); openTransitionTimer = null; }
+  if(openTransitionEl._fade){ openTransitionEl._fade.cancel(); openTransitionEl._fade = null; }
+  if(openTransitionTxt._reveal){ openTransitionTxt._reveal.cancel(); openTransitionTxt._reveal = null; }
+
+  var isPhoto = it.kind === 'photo';
+  openTransitionEl.classList.toggle('photo', isPhoto);
+  openTransitionTxt.textContent = isPhoto ? 'Photographie' : 'Vidéo';
+  openTransitionEl.hidden = false;
+  openTransitionEl.style.opacity = '1';
+  openTransitionTxt.style.clipPath = 'inset(0 100% 0 0)';
+  openTransitionTxt._reveal = openTransitionTxt.animate(
+    [ { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)' } ],
+    { duration: 550, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' }
+  );
+  openTransitionTimer = setTimeout(function(){
+    openTransitionTimer = null;
+    openTransitionEl._fade = openTransitionEl.animate(
+      [ { opacity: 1 }, { opacity: 0 } ],
+      { duration: 550, easing: 'ease', fill: 'forwards' }
+    );
+    openTransitionEl._fade.onfinish = function(){
+      openTransitionEl.hidden = true;
+      if(openTransitionEl._fade){ openTransitionEl._fade.cancel(); openTransitionEl._fade = null; }
+      if(openTransitionTxt._reveal){ openTransitionTxt._reveal.cancel(); openTransitionTxt._reveal = null; }
+      openTransitionEl.style.opacity = '';
+      openTransitionTxt.style.clipPath = '';
+    };
+  }, 1500);
+}
+
 function open(it){
+  playOpenTransition(it);
   view.classList.toggle('photo-mode', it.kind === 'photo');
   vTitle.textContent = it.title;
   vNow.textContent   = it.title;
