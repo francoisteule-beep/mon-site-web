@@ -248,6 +248,19 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
 .stage-media video{width:100%;max-height:78vh;object-fit:contain;background:#000}
 .stage-media img{width:100%;max-height:80vh;object-fit:contain;background:#000}
 
+/* Fiche photo : fond clair plutôt que le cadre sombre forcé en 16/9 des
+   vidéos, qui écrasait les photos portrait entre deux bandes noires.
+   La photo s'affiche à sa taille naturelle, sans cadre. Revient au
+   thème sombre dès qu'on ouvre autre chose (voir open() / closeView()). */
+.panel.photo-mode{background:#f2f1ec;color:#0b0b0a}
+.panel.photo-mode .phead{background:rgba(242,241,236,.92);border-bottom-color:rgba(11,11,10,.12)}
+.panel.photo-mode .phead .back,.panel.photo-mode .phead .now{color:rgba(11,11,10,.5)}
+.panel.photo-mode .phead .back:hover,.panel.photo-mode .phead .now:hover{color:#0b0b0a}
+.panel.photo-mode .label{color:rgba(11,11,10,.48)}
+.panel.photo-mode .stage-media{background:none;border:none;min-height:0;display:block}
+.panel.photo-mode .stage-media img{width:auto;max-width:100%;max-height:82vh;margin:0 auto;display:block;background:none}
+.panel.photo-mode .nextrow{border-top-color:rgba(11,11,10,.14)}
+
 /* Description et crédits */
 .pcols{
   margin-top:clamp(40px,6vh,72px);
@@ -881,6 +894,7 @@ var vNext  = document.getElementById('v-next');
 var moreObs = null;
 
 function open(it){
+  view.classList.toggle('photo-mode', it.kind === 'photo');
   vTitle.textContent = it.title;
   vNow.textContent   = it.title;
   vCat.textContent   = it.cat;
@@ -1001,6 +1015,7 @@ function closeView(){
   closePanel(view, function(){
     vStage.innerHTML = '';
     vMGrid.innerHTML = '';
+    view.classList.remove('photo-mode');
     if(moreObs) moreObs.disconnect();
   });
   if(lastFocus && document.contains(lastFocus)) lastFocus.focus();
