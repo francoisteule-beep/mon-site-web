@@ -1017,6 +1017,7 @@ function playOpenTransition(it){
      son état final tant qu'elle n'est pas annulée — sans ça, la 2e
      ouverture resterait bloquée sur l'opacité 0 de la précédente. */
   if(openTransitionTimer){ clearTimeout(openTransitionTimer); openTransitionTimer = null; }
+  if(openTransitionEl._fadeIn){ openTransitionEl._fadeIn.cancel(); openTransitionEl._fadeIn = null; }
   if(openTransitionEl._fade){ openTransitionEl._fade.cancel(); openTransitionEl._fade = null; }
   if(openTransitionTxt._reveal){ openTransitionTxt._reveal.cancel(); openTransitionTxt._reveal = null; }
 
@@ -1024,7 +1025,14 @@ function playOpenTransition(it){
   openTransitionEl.classList.toggle('photo', isPhoto);
   openTransitionTxt.textContent = isPhoto ? 'Photographie' : 'Vidéo';
   openTransitionEl.hidden = false;
-  openTransitionEl.style.opacity = '1';
+  openTransitionEl.style.opacity = '0';
+  /* Le fond à opacité réduite arrivait d'un coup pile quand le zoom
+     se termine ; il s'installe maintenant en fondu, comme sa propre
+     disparition plus bas. */
+  openTransitionEl._fadeIn = openTransitionEl.animate(
+    [ { opacity: 0 }, { opacity: 1 } ],
+    { duration: 320, easing: 'ease', fill: 'forwards' }
+  );
   openTransitionTxt.style.clipPath = 'inset(0 100% 0 0)';
   openTransitionTxt._reveal = openTransitionTxt.animate(
     [ { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)' } ],
@@ -1032,6 +1040,7 @@ function playOpenTransition(it){
   );
   openTransitionTimer = setTimeout(function(){
     openTransitionTimer = null;
+    if(openTransitionEl._fadeIn){ openTransitionEl._fadeIn.cancel(); openTransitionEl._fadeIn = null; }
     var FADE_OUT = 550, FADE_EASE = 'ease';
     openTransitionEl._fade = openTransitionEl.animate(
       [ { opacity: 1 }, { opacity: 0 } ],
