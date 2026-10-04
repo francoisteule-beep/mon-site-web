@@ -202,8 +202,18 @@ async function boot() {
     return clone;
   }
 
+  /* Remet le mur à pleine opacité d'un coup, SANS transition : le
+     fondu visible au retour est déjà assuré par le panneau projet qui
+     s'efface par-dessus (fond opaque, voir .panel dans index.html).
+     Animer l'opacité du mur en même temps déclenchait un second fondu
+     sur toute la scène 3D (63 vignettes avec leur propre transform) —
+     le navigateur recompose cette scène pendant la transition, ce qui
+     se voyait comme un « pop » du relief fisheye une fraction de
+     seconde après le début du retour. En rendant le mur visible tout
+     de suite, il n'y a plus qu'une seule transition à l'écran (celle
+     du panneau), déjà posée sur son relief correct en permanence. */
   function restoreWorld() {
-    worldEl.style.transition = 'opacity .45s ease';
+    worldEl.style.transition = 'none';
     worldEl.style.opacity = '';
   }
 
