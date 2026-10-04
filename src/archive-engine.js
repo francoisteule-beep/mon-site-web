@@ -259,43 +259,39 @@ async function boot() {
     activeInClone = clone;
     upgradeCloneImage(clone, t.item);
     t.tile.style.visibility = 'hidden';
-    worldEl.style.transition = 'opacity .3s ease';
+    /* Les autres vignettes doivent avoir totalement disparu avant que le
+       zoom ne démarre (sinon on les voit encore défiler derrière le clone
+       qui grossit) : on attend la fin du fondu du mur plutôt que de les
+       lancer en parallèle. */
+    const FADE_OTHERS = 280;
+    worldEl.style.transition = `opacity ${FADE_OTHERS}ms ease`;
     worldEl.style.opacity = '0';
-    clone.animate(
-      [
-        { top: r.top + 'px', left: r.left + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: '10px',
-          transform: `perspective(1120px) rotateX(${rotX}deg) rotateY(${rotY}deg)` },
-        { top: '0px', left: '0px', width: innerWidth + 'px', height: innerHeight + 'px', borderRadius: '0px',
-          transform: 'perspective(1120px) rotateX(0deg) rotateY(0deg)' },
-      ],
-      { duration: 650, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' }
-    ).onfinish = () => { onMidpoint(); };
+    worldEl.addEventListener('transitionend', function startZoom(ev){
+      if (ev.target !== worldEl || ev.propertyName !== 'opacity') return;
+      worldEl.removeEventListener('transitionend', startZoom);
+      clone.animate(
+        [
+          { top: r.top + 'px', left: r.left + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: '10px',
+            transform: `perspective(1120px) rotateX(${rotX}deg) rotateY(${rotY}deg)` },
+          { top: '0px', left: '0px', width: innerWidth + 'px', height: innerHeight + 'px', borderRadius: '0px',
+            transform: 'perspective(1120px) rotateX(0deg) rotateY(0deg)' },
+        ],
+        { duration: 650, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' }
+      ).onfinish = () => { onMidpoint(); };
+    });
   }
 
+  /* Retour : pas de FLIP inverse (le clone qui se rétrécit jusqu'à sa
+     vignette d'origine) — juste un fondu simple vers le mur, le panneau
+     projet s'efface pendant que le mur reparaît (voir closeView côté
+     index.html pour le fondu du panneau). */
   function playHeroZoomOut(onDone) {
     clearHeroClone();
-    if (REDUCED || !lastHeroOrigin) { restoreWorld(); if (onDone) onDone(); return; }
     const t = lastHeroOrigin;
     lastHeroOrigin = null;
-    const r = t.tile.getBoundingClientRect();
-    const rotX = -t.vAngle, rotY = -t.hAngle * 0.42;
-    const clone = cloneFrame(t, { top: 0, left: 0, width: innerWidth, height: innerHeight, radius: '0px' }, { x: 0, y: 0 });
-    upgradeCloneImage(clone, t.item);
-    worldEl.style.transition = 'opacity .5s ease .15s';
-    worldEl.style.opacity = '';
-    clone.animate(
-      [
-        { top: '0px', left: '0px', width: innerWidth + 'px', height: innerHeight + 'px', borderRadius: '0px',
-          transform: 'perspective(1120px) rotateX(0deg) rotateY(0deg)' },
-        { top: r.top + 'px', left: r.left + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: '10px',
-          transform: `perspective(1120px) rotateX(${rotX}deg) rotateY(${rotY}deg)` },
-      ],
-      { duration: 600, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' }
-    ).onfinish = () => {
-      if (clone.parentNode) clone.parentNode.removeChild(clone);
-      t.tile.style.visibility = '';
-      if (onDone) onDone();
-    };
+    if (t) t.tile.style.visibility = '';
+    restoreWorld();
+    if (onDone) onDone();
   }
 
   /* ── 63 vignettes DOM, créées une fois, jamais détruites. Leur contenu
