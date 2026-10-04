@@ -160,7 +160,7 @@ async function boot() {
   const liveEl = document.getElementById('archive-live');
   const depthEl = document.getElementById('count');
   const heroLayer = document.getElementById('hero-zoom-layer');
-  if (!stageEl || !worldEl || N === 0) { window.ArchiveEngine = { setFilter(){}, setEnabled(){}, playHeroZoomOut(){}, clearHeroClone(){} }; return; }
+  if (!stageEl || !worldEl || N === 0) { window.ArchiveEngine = { setFilter(){}, setEnabled(){}, playHeroZoomOut(){}, clearHeroClone(){}, fadeOutHeroClone(){} }; return; }
 
   const REDUCED = H.isReduced();
   const HOVER_CAPABLE = matchMedia('(hover: hover)').matches;
@@ -207,12 +207,46 @@ async function boot() {
     worldEl.style.opacity = '';
   }
 
+  /* La vignette d'origine est petite (quelques centaines de px) : une
+     fois étirée plein écran, elle n'a pas la définition qu'on attend.
+     On lance en parallèle le chargement de la vraie image (même URL
+     que la fiche réelle) et on la substitue dès qu'elle est prête —
+     invisible la plupart du temps car ça arrive pendant que le clone
+     est encore petit ou caché sous le texte Photo/Vidéo. Les vidéos
+     n'ont pas d'équivalent haute définition simple à charger, donc
+     seules les photos sont concernées. */
+  function upgradeCloneImage(clone, item) {
+    if (!item || item.kind !== 'photo' || !item.src || !H.imgUrl) return;
+    const img = clone.querySelector('img');
+    if (!img) return;
+    const hi = new Image();
+    hi.onload = () => { if (clone.parentNode) img.src = hi.src; };
+    hi.src = H.imgUrl(item.src, 1800);
+  }
+
   /* Appelé par index.html une fois le texte Photo/Vidéo entièrement
      affiché (voire déjà reparti) : le clone d'ouverture n'a plus besoin
-     de rester, la fiche réelle a pris le relais en dessous. */
+     de rester, la fiche réelle a pris le relais en dessous. Retrait
+     immédiat — à ne garder que pour les cas d'urgence (reduced motion,
+     navigation coupée en plein milieu) ; dans le cas normal c'est
+     fadeOutHeroClone ci-dessous qui s'en charge, en douceur. */
   function clearHeroClone() {
     if (activeInClone && activeInClone.parentNode) activeInClone.parentNode.removeChild(activeInClone);
     activeInClone = null;
+  }
+
+  /* Efface le clone d'ouverture en fondu, avec la même durée/allure que
+     le fond du texte Photo/Vidéo (appelé par index.html au même instant
+     que ce fondu démarre) — l'image accompagne la disparition du fond
+     au lieu de rester plaquée dessus puis de disparaître d'un coup. */
+  function fadeOutHeroClone(duration, easing) {
+    if (!activeInClone) return;
+    const clone = activeInClone;
+    activeInClone = null;
+    clone.animate(
+      [ { opacity: 1 }, { opacity: 0 } ],
+      { duration: duration || 550, easing: easing || 'ease', fill: 'forwards' }
+    ).onfinish = () => { if (clone.parentNode) clone.parentNode.removeChild(clone); };
   }
 
   function playHeroZoomIn(t, onMidpoint) {
@@ -223,6 +257,7 @@ async function boot() {
     const rotX = -t.vAngle, rotY = -t.hAngle * 0.42;
     const clone = cloneFrame(t, { top: r.top, left: r.left, width: r.width, height: r.height, radius: '10px' }, { x: rotX, y: rotY });
     activeInClone = clone;
+    upgradeCloneImage(clone, t.item);
     t.tile.style.visibility = 'hidden';
     worldEl.style.transition = 'opacity .3s ease';
     worldEl.style.opacity = '0';
@@ -245,6 +280,7 @@ async function boot() {
     const r = t.tile.getBoundingClientRect();
     const rotX = -t.vAngle, rotY = -t.hAngle * 0.42;
     const clone = cloneFrame(t, { top: 0, left: 0, width: innerWidth, height: innerHeight, radius: '0px' }, { x: 0, y: 0 });
+    upgradeCloneImage(clone, t.item);
     worldEl.style.transition = 'opacity .5s ease .15s';
     worldEl.style.opacity = '';
     clone.animate(
@@ -580,7 +616,7 @@ async function boot() {
   }
 
   render();
-  window.ArchiveEngine = { setFilter, setEnabled, playHeroZoomOut, clearHeroClone };
+  window.ArchiveEngine = { setFilter, setEnabled, playHeroZoomOut, clearHeroClone, fadeOutHeroClone };
 }
 
 boot();

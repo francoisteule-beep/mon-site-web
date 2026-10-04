@@ -647,6 +647,7 @@ window._archiveReady = new Promise(function(res){ archiveReadyResolve = res; });
 window.ArchiveHelpers = {
   esc: esc,
   thumb: thumb,
+  imgUrl: imgUrl,
   isReduced: function(){ return reduced; },
   isBlocked: function(){ return MODE !== 'wall' || !document.getElementById('view').hidden; },
   open: function(key){ location.hash = key; }
@@ -1031,20 +1032,21 @@ function playOpenTransition(it){
   );
   openTransitionTimer = setTimeout(function(){
     openTransitionTimer = null;
+    var FADE_OUT = 550, FADE_EASE = 'ease';
     openTransitionEl._fade = openTransitionEl.animate(
       [ { opacity: 1 }, { opacity: 0 } ],
-      { duration: 550, easing: 'ease', fill: 'forwards' }
+      { duration: FADE_OUT, easing: FADE_EASE, fill: 'forwards' }
     );
+    /* Le clone plein écran du zoom d'ouverture (s'il y en a un) s'efface
+       en même temps que le fond, même durée/même allure, au lieu de
+       disparaître d'un coup une fois le fond entièrement reparti. */
+    if(window.ArchiveEngine && window.ArchiveEngine.fadeOutHeroClone) window.ArchiveEngine.fadeOutHeroClone(FADE_OUT, FADE_EASE);
     openTransitionEl._fade.onfinish = function(){
       openTransitionEl.hidden = true;
       if(openTransitionEl._fade){ openTransitionEl._fade.cancel(); openTransitionEl._fade = null; }
       if(openTransitionTxt._reveal){ openTransitionTxt._reveal.cancel(); openTransitionTxt._reveal = null; }
       openTransitionEl.style.opacity = '';
       openTransitionTxt.style.clipPath = '';
-      /* Le clone plein écran du zoom d'ouverture (s'il y en a un) ne sert
-         plus à rien une fois le texte entièrement reparti : la fiche
-         réelle est maintenant seule visible en dessous. */
-      if(window.ArchiveEngine && window.ArchiveEngine.clearHeroClone) window.ArchiveEngine.clearHeroClone();
     };
   }, 1500);
 }
