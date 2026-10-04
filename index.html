@@ -297,6 +297,24 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
    scrollant, comme la demande le précise explicitement. */
 .panel.photo-mode .more h3,.panel.photo-mode .more .sub{color:rgba(11,11,10,.5)}
 .panel.photo-mode .mcell{background:#e7e5df;border-color:rgba(11,11,10,.14)}
+/* Sans indice, rien ne dit qu'il y a une série à scroller pour la voir —
+   pastille flottante en bas de l'écran, visible seulement si #v-more a
+   du contenu (voir open()), masquée dès qu'on a commencé à scroller. */
+.scroll-hint{
+  position:fixed;left:50%;bottom:28px;z-index:30;
+  display:flex;align-items:center;gap:8px;
+  padding:10px 18px;border-radius:999px;border:none;
+  background:#0b0b0a;color:#f2f1ec;
+  font-size:.58rem;letter-spacing:.16em;text-transform:uppercase;
+  transform:translateX(-50%);
+  animation:scroll-hint-bob 1.8s ease-in-out infinite;
+  transition:opacity .25s ease,visibility 0s linear 0s;
+}
+.scroll-hint.away{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .25s ease,visibility 0s linear .25s}
+.scroll-hint[hidden]{display:none}
+.scroll-hint-arrow{font-size:.75rem}
+@keyframes scroll-hint-bob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,6px)}}
+@media (prefers-reduced-motion:reduce){.scroll-hint{animation:none}}
 @media (max-width:820px){
   .panel.photo-mode .photo-hero{flex-direction:column;justify-content:center;gap:clamp(14px,2.5vh,22px)}
   .panel.photo-mode .photo-info{max-width:none;flex:0 0 auto}
@@ -475,6 +493,9 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
       </div>
       <div class="stage-media" id="v-stage"></div>
     </div>
+    <button class="scroll-hint" id="v-scroll-hint" hidden>
+      <span id="v-scroll-hint-text"></span><span class="scroll-hint-arrow">↓</span>
+    </button>
 
     <div class="pcols" id="v-about" hidden>
       <div class="pdesc" id="v-desc-wrap" hidden>
@@ -966,6 +987,8 @@ var vYear  = document.getElementById('v-year');
 var vNow   = document.getElementById('v-now');
 var vStage = document.getElementById('v-stage');
 var vMore  = document.getElementById('v-more');
+var vScrollHint     = document.getElementById('v-scroll-hint');
+var vScrollHintText = document.getElementById('v-scroll-hint-text');
 var vSub   = document.getElementById('v-subcount');
 var vMGrid = document.getElementById('v-mgrid');
 var vNextR = document.getElementById('v-nextrow');
@@ -1023,7 +1046,7 @@ function open(it){
   view.classList.toggle('photo-mode', it.kind === 'photo');
   vTitle.textContent = it.title;
   vNow.textContent   = it.title;
-  vCat.textContent   = it.cat;
+  vCat.textContent   = (it.kind === 'photo' && it.tools) ? it.tools : it.cat;
   vYear.textContent  = it.date || it.year || '';
 
   /* Navigue parmi les projets de la même catégorie (photo avec photo,
@@ -1140,6 +1163,17 @@ function open(it){
     vMore.hidden = true;
   }
 
+  /* Pastille « scroller pour voir la série » : seulement en photo, et
+     seulement s'il y a vraiment une série — sans elle, rien n'indique
+     qu'il y a autre chose à voir plus bas. */
+  if(it.kind === 'photo' && list.length){
+    vScrollHintText.textContent = list.length + (list.length > 1 ? ' photos de plus' : ' photo de plus');
+    vScrollHint.hidden = false;
+    vScrollHint.classList.remove('away');
+  } else {
+    vScrollHint.hidden = true;
+  }
+
   /* Ligne « précédent / suivant » : seulement pour les vidéos — les
      photos naviguent par clic invisible sur l'image (voir plus haut). */
   if(it.kind === 'photo'){
@@ -1230,6 +1264,13 @@ function backHome(){
   closeView(); closePanel(infoV);
   if(lastFocus && document.contains(lastFocus)) lastFocus.focus();
 }
+vScrollHint.addEventListener('click', function(){
+  vMore.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+});
+view.addEventListener('scroll', function(){
+  if(vScrollHint.hidden) return;
+  vScrollHint.classList.toggle('away', view.scrollTop > 80);
+}, { passive:true });
 document.getElementById('v-back').addEventListener('click', backHome);
 document.getElementById('i-back').addEventListener('click', backHome);
 document.getElementById('nav-info').addEventListener('click', function(){ location.hash = 'infos'; });
