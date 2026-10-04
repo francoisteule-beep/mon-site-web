@@ -159,7 +159,8 @@ async function boot() {
   const worldEl = document.getElementById('plane');
   const liveEl = document.getElementById('archive-live');
   const depthEl = document.getElementById('count');
-  if (!stageEl || !worldEl || N === 0) { window.ArchiveEngine = { setFilter(){}, setEnabled(){} }; return; }
+  const heroLayer = document.getElementById('hero-zoom-layer');
+  if (!stageEl || !worldEl || N === 0) { window.ArchiveEngine = { setFilter(){}, setEnabled(){}, playHeroZoomOut(){} }; return; }
 
   const REDUCED = H.isReduced();
   const HOVER_CAPABLE = matchMedia('(hover: hover)').matches;
@@ -172,6 +173,75 @@ async function boot() {
   let focusTile = null;
   let announcedKey = null;
   let dirty = false;
+
+  /* ── Transition « hero » : la vignette cliquée se détache du mur et
+     zoome plein écran pendant que les autres s'effacent ; au retour,
+     l'inverse. Le clone réutilise le .tframe existant (image déjà
+     chargée, donc aucun flash), redimensionné via top/left/width/height
+     — pas de transform, pour ne jamais se heurter à celui, continu,
+     qu'écrit le moteur sur la vraie vignette. ── */
+  let lastHeroOrigin = null;
+
+  function cloneFrame(t, from) {
+    const clone = t.frame.cloneNode(true);
+    clone.className = 'tframe hero-clone';
+    const img = clone.querySelector('img');
+    if (img) img.style.setProperty('--perspective-blur', '0px');
+    clone.style.top = from.top + 'px';
+    clone.style.left = from.left + 'px';
+    clone.style.width = from.width + 'px';
+    clone.style.height = from.height + 'px';
+    clone.style.borderRadius = from.radius;
+    heroLayer.appendChild(clone);
+    return clone;
+  }
+
+  function restoreWorld() {
+    worldEl.style.transition = 'opacity .45s ease';
+    worldEl.style.opacity = '';
+  }
+
+  function playHeroZoomIn(t, onMidpoint) {
+    if (REDUCED) { onMidpoint(); return; }
+    const r = t.tile.getBoundingClientRect();
+    if (!r.width || !r.height) { onMidpoint(); return; }
+    lastHeroOrigin = t;
+    const clone = cloneFrame(t, { top: r.top, left: r.left, width: r.width, height: r.height, radius: '10px' });
+    worldEl.style.transition = 'opacity .3s ease';
+    worldEl.style.opacity = '0';
+    clone.animate(
+      [
+        { top: r.top + 'px', left: r.left + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: '10px' },
+        { top: '0px', left: '0px', width: innerWidth + 'px', height: innerHeight + 'px', borderRadius: '0px' },
+      ],
+      { duration: 650, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' }
+    ).onfinish = () => {
+      onMidpoint();
+      /* Laisse le texte Photo/Vidéo (déclenché par onMidpoint) recouvrir
+         le clone avant de le retirer, sinon un accroc est visible. */
+      setTimeout(() => { if (clone.parentNode) clone.parentNode.removeChild(clone); }, 450);
+    };
+  }
+
+  function playHeroZoomOut(onDone) {
+    if (REDUCED || !lastHeroOrigin) { restoreWorld(); if (onDone) onDone(); return; }
+    const t = lastHeroOrigin;
+    lastHeroOrigin = null;
+    const r = t.tile.getBoundingClientRect();
+    const clone = cloneFrame(t, { top: 0, left: 0, width: innerWidth, height: innerHeight, radius: '0px' });
+    worldEl.style.transition = 'opacity .5s ease .15s';
+    worldEl.style.opacity = '';
+    clone.animate(
+      [
+        { top: '0px', left: '0px', width: innerWidth + 'px', height: innerHeight + 'px', borderRadius: '0px' },
+        { top: r.top + 'px', left: r.left + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: '10px' },
+      ],
+      { duration: 600, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' }
+    ).onfinish = () => {
+      if (clone.parentNode) clone.parentNode.removeChild(clone);
+      if (onDone) onDone();
+    };
+  }
 
   /* ── 63 vignettes DOM, créées une fois, jamais détruites. Leur contenu
      (t.item) est assigné par applyContent(), pas ici : il change à
@@ -206,7 +276,7 @@ async function boot() {
 
       tileEl.addEventListener('click', () => {
         if (state.dragged || state.suppressClick || !t.item || t.item.soon) return;
-        H.open(t.item.key);
+        playHeroZoomIn(t, () => H.open(t.item.key));
       });
       if (HOVER_CAPABLE) {
         tileEl.addEventListener('pointerenter', () => {
@@ -491,7 +561,7 @@ async function boot() {
   }
 
   render();
-  window.ArchiveEngine = { setFilter, setEnabled };
+  window.ArchiveEngine = { setFilter, setEnabled, playHeroZoomOut };
 }
 
 boot();
