@@ -425,11 +425,12 @@ header.site nav button[aria-pressed="true"]{color:var(--fg);border-bottom-color:
    révèle de gauche à droite, reste affiché, puis s'efface en fondu
    pour laisser voir le projet — voir playOpenTransition(). */
 #open-transition{
-  position:fixed;inset:0;z-index:300;background:var(--bg);
+  position:fixed;inset:0;z-index:300;background:rgba(5,5,5,.5);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
   display:flex;align-items:center;justify-content:center;pointer-events:none;
 }
 #open-transition[hidden]{display:none}
-#open-transition.photo{background:#f2f1ec}
+#open-transition.photo{background:rgba(242,241,236,.5)}
 #open-transition span{
   font-size:clamp(1.6rem,6vw,4rem);letter-spacing:.14em;text-transform:uppercase;
   font-weight:600;color:var(--fg);display:inline-block;
@@ -1040,6 +1041,10 @@ function playOpenTransition(it){
       if(openTransitionTxt._reveal){ openTransitionTxt._reveal.cancel(); openTransitionTxt._reveal = null; }
       openTransitionEl.style.opacity = '';
       openTransitionTxt.style.clipPath = '';
+      /* Le clone plein écran du zoom d'ouverture (s'il y en a un) ne sert
+         plus à rien une fois le texte entièrement reparti : la fiche
+         réelle est maintenant seule visible en dessous. */
+      if(window.ArchiveEngine && window.ArchiveEngine.clearHeroClone) window.ArchiveEngine.clearHeroClone();
     };
   }, 1500);
 }
@@ -1095,7 +1100,6 @@ function open(it){
     v.setAttribute('controlsList', 'nodownload');
     v.src = vidUrl(it.src, 1600);
     vStage.appendChild(v);
-    v.play().catch(function(){});
   }
 
   /* ── DESCRIPTION ET CRÉDITS ── */

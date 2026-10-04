@@ -160,7 +160,7 @@ async function boot() {
   const liveEl = document.getElementById('archive-live');
   const depthEl = document.getElementById('count');
   const heroLayer = document.getElementById('hero-zoom-layer');
-  if (!stageEl || !worldEl || N === 0) { window.ArchiveEngine = { setFilter(){}, setEnabled(){}, playHeroZoomOut(){} }; return; }
+  if (!stageEl || !worldEl || N === 0) { window.ArchiveEngine = { setFilter(){}, setEnabled(){}, playHeroZoomOut(){}, clearHeroClone(){} }; return; }
 
   const REDUCED = H.isReduced();
   const HOVER_CAPABLE = matchMedia('(hover: hover)').matches;
@@ -177,12 +177,17 @@ async function boot() {
   /* ── Transition « hero » : la vignette cliquée se détache du mur et
      zoome plein écran pendant que les autres s'effacent ; au retour,
      l'inverse. Le clone réutilise le .tframe existant (image déjà
-     chargée, donc aucun flash), redimensionné via top/left/width/height
-     — pas de transform, pour ne jamais se heurter à celui, continu,
-     qu'écrit le moteur sur la vraie vignette. ── */
+     chargée, donc aucun flash), redimensionné via top/left/width/height.
+     Il démarre avec la même rotation que la vraie vignette au moment du
+     clic (le cylindre a un relief) puis s'aplatit en même temps qu'il
+     grossit, sinon le passage du relief courbé à l'image plate saute
+     d'un coup — c'est ce qui donnait l'impression que le fisheye
+     « se retirait » brutalement. La vraie vignette est masquée pendant
+     ce temps pour ne jamais être visible sous son clone. ── */
   let lastHeroOrigin = null;
+  let activeInClone = null;
 
-  function cloneFrame(t, from) {
+  function cloneFrame(t, from, rotation) {
     const clone = t.frame.cloneNode(true);
     clone.className = 'tframe hero-clone';
     const img = clone.querySelector('img');
@@ -192,6 +197,7 @@ async function boot() {
     clone.style.width = from.width + 'px';
     clone.style.height = from.height + 'px';
     clone.style.borderRadius = from.radius;
+    clone.style.transform = `perspective(1120px) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`;
     heroLayer.appendChild(clone);
     return clone;
   }
@@ -201,44 +207,57 @@ async function boot() {
     worldEl.style.opacity = '';
   }
 
+  /* Appelé par index.html une fois le texte Photo/Vidéo entièrement
+     affiché (voire déjà reparti) : le clone d'ouverture n'a plus besoin
+     de rester, la fiche réelle a pris le relais en dessous. */
+  function clearHeroClone() {
+    if (activeInClone && activeInClone.parentNode) activeInClone.parentNode.removeChild(activeInClone);
+    activeInClone = null;
+  }
+
   function playHeroZoomIn(t, onMidpoint) {
     if (REDUCED) { onMidpoint(); return; }
     const r = t.tile.getBoundingClientRect();
     if (!r.width || !r.height) { onMidpoint(); return; }
     lastHeroOrigin = t;
-    const clone = cloneFrame(t, { top: r.top, left: r.left, width: r.width, height: r.height, radius: '10px' });
+    const rotX = -t.vAngle, rotY = -t.hAngle * 0.42;
+    const clone = cloneFrame(t, { top: r.top, left: r.left, width: r.width, height: r.height, radius: '10px' }, { x: rotX, y: rotY });
+    activeInClone = clone;
+    t.tile.style.visibility = 'hidden';
     worldEl.style.transition = 'opacity .3s ease';
     worldEl.style.opacity = '0';
     clone.animate(
       [
-        { top: r.top + 'px', left: r.left + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: '10px' },
-        { top: '0px', left: '0px', width: innerWidth + 'px', height: innerHeight + 'px', borderRadius: '0px' },
+        { top: r.top + 'px', left: r.left + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: '10px',
+          transform: `perspective(1120px) rotateX(${rotX}deg) rotateY(${rotY}deg)` },
+        { top: '0px', left: '0px', width: innerWidth + 'px', height: innerHeight + 'px', borderRadius: '0px',
+          transform: 'perspective(1120px) rotateX(0deg) rotateY(0deg)' },
       ],
       { duration: 650, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' }
-    ).onfinish = () => {
-      onMidpoint();
-      /* Laisse le texte Photo/Vidéo (déclenché par onMidpoint) recouvrir
-         le clone avant de le retirer, sinon un accroc est visible. */
-      setTimeout(() => { if (clone.parentNode) clone.parentNode.removeChild(clone); }, 450);
-    };
+    ).onfinish = () => { onMidpoint(); };
   }
 
   function playHeroZoomOut(onDone) {
+    clearHeroClone();
     if (REDUCED || !lastHeroOrigin) { restoreWorld(); if (onDone) onDone(); return; }
     const t = lastHeroOrigin;
     lastHeroOrigin = null;
     const r = t.tile.getBoundingClientRect();
-    const clone = cloneFrame(t, { top: 0, left: 0, width: innerWidth, height: innerHeight, radius: '0px' });
+    const rotX = -t.vAngle, rotY = -t.hAngle * 0.42;
+    const clone = cloneFrame(t, { top: 0, left: 0, width: innerWidth, height: innerHeight, radius: '0px' }, { x: 0, y: 0 });
     worldEl.style.transition = 'opacity .5s ease .15s';
     worldEl.style.opacity = '';
     clone.animate(
       [
-        { top: '0px', left: '0px', width: innerWidth + 'px', height: innerHeight + 'px', borderRadius: '0px' },
-        { top: r.top + 'px', left: r.left + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: '10px' },
+        { top: '0px', left: '0px', width: innerWidth + 'px', height: innerHeight + 'px', borderRadius: '0px',
+          transform: 'perspective(1120px) rotateX(0deg) rotateY(0deg)' },
+        { top: r.top + 'px', left: r.left + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: '10px',
+          transform: `perspective(1120px) rotateX(${rotX}deg) rotateY(${rotY}deg)` },
       ],
       { duration: 600, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' }
     ).onfinish = () => {
       if (clone.parentNode) clone.parentNode.removeChild(clone);
+      t.tile.style.visibility = '';
       if (onDone) onDone();
     };
   }
@@ -561,7 +580,7 @@ async function boot() {
   }
 
   render();
-  window.ArchiveEngine = { setFilter, setEnabled, playHeroZoomOut };
+  window.ArchiveEngine = { setFilter, setEnabled, playHeroZoomOut, clearHeroClone };
 }
 
 boot();
