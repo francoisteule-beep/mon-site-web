@@ -785,7 +785,8 @@ function boot(){
       ALL.push({
         key:'projet-' + p.id, kind:'video', cat:'Vidéo',
         title: p.title || 'Sans titre',
-        year: yearOf(p.created_at),
+        year: yearOf(p.project_date) || p.project_date || yearOf(p.created_at),
+        date: p.project_date || '',      /* « Date du projet » du back-office */
         src: p.video_url || '',
         thumb: p.thumb_url || '',        /* miniature choisie dans le back-office */
         desc: p.description || '',
